@@ -1,6 +1,6 @@
 import colors from "colors";
 import axios from "axios";
-import { generateCreateTableSQL } from "./sqlscripthelper.js";
+import { generateCreateTableSQL , generateInsertTableSQL } from "./sqlscripthelper.js";
 import { executeQuery } from "../server/conexion.js";
 import fs from 'fs';
 import { leerFileJson, unZipFile } from "./fileshelper.js";
@@ -48,7 +48,7 @@ const consultState = async (endpoint, body, axiosConfig) => {
         }
       }
       return status; 
-    } catch (error) {
+    }catch (error) {
       throw new Error('Error en la consulta de estado: ' + error);
     }
   };
@@ -149,7 +149,7 @@ const loadTable = async (schema, table) => {
     try{
         // creamos la Sentencia Create de la tabla que requerimos 
         const llDrop = await executeQuery(`DROP TABLE IF EXISTS ${table}`);
-        const lcSql =  await generateCreateTableSQL(schema.schema, table);
+        const lcSql =  generateCreateTableSQL(schema.schema, table);
         const llCreate = await executeQuery(lcSql);
 
         // Una vez creada la tabla se tiene que empezar a consultar el proceso para extraer los 
@@ -193,16 +193,29 @@ const loadTable = async (schema, table) => {
         // se leen los archivos y regresamos el arreglo con los mismos
 
         const readFiles = await downloadFiles(files);
-    
-        const save = await insertDataJson(readFiles);
-
-        console.log(save);
+        
+        //  Una ves que los archivos se descomprimen ,  
+        //  estos mismos se trabajan para que sean insertados en la base
+        const save = await insertDataJson(readFiles,table);
 
 
     }catch (error) {
         throw new Error('Ocurrio un error inesperado: '+ error);
     } 
 }
+
+const insertDataJson = async (files = [],tableName) => {
+    try{
+      for(let x = 0;x < files.length ; x++){
+          const jsonData = leerFileJson(files[x]);
+          const sqlInsert = generateInsertTableSQL(jsonData,tableName);
+          const llInsert = await executeQuery(sqlInsert);
+      }
+    }catch(error){
+      throw new Error('Ocurrio un error inesperado: '+ error);
+    }
+  
+  }
 
 export {
     getAccessToken,

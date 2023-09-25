@@ -28,7 +28,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
 
     for (const key in jsonSchema.properties.value.properties) {
       const property = jsonSchema.properties.value.properties[key];
-      const columnName = !ReservadasSQLServer.includes(key.toUpperCase()) ? key : key + "_c" ;
+      const columnName = !ReservadasSQLServer.includes(key.toUpperCase()) ? key : "["+ key + "]" ;
       let columnType = '';
   
       switch (property.type) {
@@ -52,8 +52,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
       }
       
     columns.push(`${columnName} ${columnType}`);
-     
-      
+
     }
   
     const primaryKey = 'id INT PRIMARY KEY'; // Reemplaza con tu clave primaria
@@ -63,8 +62,39 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     return createTableSQL;
   }
 
+  // crea el codigo insert de nuestra tabla
+
+  const generateInsertTableSQL = (jsonData,tableName) => {
+
+    let claves = Object.keys(jsonData[0].value); 
+    let filas = [];
+      for (let x = 0; x < jsonData.length ;x++ ){
+         const lnId = ` ${jsonData[x].key.id} `;
+         const valores = [];
+          for(const [key, value] of Object.entries(jsonData[x].value)){
+            let valor = ""
+            switch(typeof(value)){
+              case "number":
+                valor = value;
+              break;
+              case "string":
+                valor = '"' + value + '"'
+              break;
+              case "boolean":
+                valor = value ? 1 : 0 ;
+              break;
+            }
+            valores.push(valor);
+          }
+          filas.push(`( ${lnId}, ${valores.join(', ')} )`);
+      }
+    let lcInsert = `INSERT INTO ${tableName} (id, ${claves.join(', ')}) VALUES ${filas.join(', ')} `;
+    return lcInsert ;
+  }
+
   export {
     generateCreateTableSQL,
+    generateInsertTableSQL
   }
 
 

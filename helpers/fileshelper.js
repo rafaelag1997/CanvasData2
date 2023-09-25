@@ -2,6 +2,7 @@ import fs from 'fs';
 import zlib  from 'zlib';
 import { promises as fsPromises } from 'fs';
 import colors from "colors";
+import { generateInsertTableSQL } from './sqlscripthelper.js';
 
 // leer archivo Json y retornar un objeto json de su valor 
 const leerFileJson = (route) => {
@@ -39,14 +40,8 @@ const  unZipFile =  async (filePath) => {
       throw error;
     }
   }
-
-
-const insertDataJson = async (files = []) => {
-
-}
   
 export{
     leerFileJson,
-    unZipFile,
-    insertDataJson
+    unZipFile
 }

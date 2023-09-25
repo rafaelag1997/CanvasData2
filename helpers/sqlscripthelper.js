@@ -62,13 +62,19 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     return createTableSQL;
   }
 
-  // crea el codigo insert de nuestra tabla
+  // crea el codigo INSERT de nuestra tabla
 
   const generateInsertTableSQL = (jsonData,tableName) => {
 
     let claves = Object.keys(jsonData[0].value); 
+    // estructura del insert principal 
+    const lcInsert = `INSERT INTO ${tableName} (id, ${claves.join(', ')}) VALUES `;
     let filas = [];
+    let inserts = [];
+    const lnCant = 1000 // es el limite de registros por insert
+    let cuenta = 0 ;  // es el valor incremental de los registros 
       for (let x = 0; x < jsonData.length ;x++ ){
+
          const lnId = ` ${jsonData[x].key.id} `;
          const valores = [];
           for(const [key, value] of Object.entries(jsonData[x].value)){
@@ -86,10 +92,19 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
             }
             valores.push(valor);
           }
+
           filas.push(`( ${lnId}, ${valores.join(', ')} )`);
+          cuenta++;
+          // se crea un INSERT cada 1000 registros para que pueda insertarse en la base de datos
+
+          if(cuenta === lnCant || cuenta === jsonData.length){
+            // se reinicia el insert
+            inserts.push(lcInsert +  ` ${filas.join(', ')}`);
+            filas = [];
+            cuenta = 0;
+          }
       }
-    let lcInsert = `INSERT INTO ${tableName} (id, ${claves.join(', ')}) VALUES ${filas.join(', ')} `;
-    return lcInsert ;
+    return inserts ;
   }
 
   export {

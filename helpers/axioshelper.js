@@ -209,7 +209,8 @@ const insertDataJson = async (files = [],tableName) => {
       for(let x = 0;x < files.length ; x++){
           const jsonData = leerFileJson(files[x]);
           const sqlInsert = generateInsertTableSQL(jsonData,tableName);
-          const llInsert = await executeQuery(sqlInsert);
+          console.log(sqlInsert);
+        //   const llInsert = await executeQuery(sqlInsert);
       }
     }catch(error){
       throw new Error('Ocurrio un error inesperado: '+ error);

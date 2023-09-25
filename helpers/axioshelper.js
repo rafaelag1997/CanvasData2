@@ -124,7 +124,7 @@ const downloadFiles =  async (files) =>{
                 });
             console.log(`Archivo descargado y guardado en: ${filePath.green}`);
             // TODO  : descomprimir el archivo que se acaba de descargar 
-            const jsonFile = unZipFile(filePath);
+            const jsonFile = await unZipFile(filePath);
             console.log(`Archivo descomprimido: ${jsonFile.green}`);
             jsonFiles.push(jsonFile);
 
@@ -190,9 +190,13 @@ const loadTable = async (schema, table) => {
 
         const files = await postJsonAxios(`/dap/object/url`,status.objects,axiosConfig);
         
-        const readFiles = await downloadFiles(files);
+        // se leen los archivos y regresamos el arreglo con los mismos
 
-        console.log(readFiles);
+        const readFiles = await downloadFiles(files);
+    
+        const save = await insertDataJson(readFiles);
+
+        console.log(save);
 
 
     }catch (error) {

@@ -39,8 +39,14 @@ const  unZipFile =  async (filePath) => {
       throw error;
     }
   }
+
+
+const insertDataJson = async (files = []) => {
+
+}
   
 export{
     leerFileJson,
-    unZipFile
+    unZipFile,
+    insertDataJson
 }

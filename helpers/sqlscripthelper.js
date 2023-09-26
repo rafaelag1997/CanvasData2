@@ -20,44 +20,35 @@ const ReservadasSQLServer = [
   "ESCAPE","PIVOT","WHERE","EXCEPT","PLAN","WHILE","EXEC","PRECISION","WITH","Ejecute","PRIMARY","EXISTS","PRINT","PUBLIC",
 ];
 
+// funcion que nos retorna el valor del tipo de dato de la columna 
+
+const varTypeProperty = (property) =>{
+  let type = property.type;
+  return type === "integer" ? "INT":
+         type === "number"  ? "FLOAT":
+         type === "boolean" ? "BIT" :
+         type === "string"  ? `NVARCHAR(${property.maxLength || 255})` :
+         type === "object"  ? 'NVARCHAR(MAX)':
+         'NVARCHAR(MAX)';
+}
+
 
 // Función para generar la sentencia SQL de creación de tabla
 const generateCreateTableSQL = (jsonSchema,tableName) => {
   
     const columns = [];
-
     for (const key in jsonSchema.properties.value.properties) {
       const property = jsonSchema.properties.value.properties[key];
       const columnName = !ReservadasSQLServer.includes(key.toUpperCase()) ? key : "["+ key + "]" ;
-      let columnType = '';
-  
-      switch (property.type) {
-        case 'integer':
-          columnType = 'INT';
-          break;
-        case 'number':
-          columnType = 'FLOAT';
-          break;
-        case 'boolean':
-          columnType = 'BIT';
-          break;
-        case 'string':
-          columnType = `NVARCHAR(${property.maxLength || 255})`;
-          break;
-        case 'object':
-          columnType = 'NVARCHAR(MAX)';
-          break;
-        default:
-          columnType = 'NVARCHAR(MAX)';
-      }
       
-    columns.push(`${columnName} ${columnType}`);
+      // Buscamos la propiedad en la funcion 
+      let columnType = varTypeProperty(property);
 
+      columns.push(`${columnName} ${columnType}`);
     }
-  
     const primaryKey = 'id INT PRIMARY KEY'; // Reemplaza con tu clave primaria
   
-    const createTableSQL = `CREATE TABLE ${tableName} (${columns.join(', ')}, ${primaryKey});`;
+    const createTableSQL = `CREATE TABLE ${tableName} ( ${primaryKey}, ${columns.join(', ')} );`;
   
     return createTableSQL;
   }
@@ -84,10 +75,13 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
                 valor = value;
               break;
               case "string":
-                valor = '"' + value + '"'
+                valor = "'" + value + "'"
               break;
               case "boolean":
                 valor = value ? 1 : 0 ;
+              break;
+              case "object":
+                valor = JSON.stringify(value);
               break;
             }
             valores.push(valor);

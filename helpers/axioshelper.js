@@ -14,7 +14,8 @@ const clientId = 'us-east-1#af49ca6b-7ce8-4bb2-ac36-3a72d119518c';
 const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
 
 // Carpeta donde se guardan los archivos que se van a descargar GZ 
-const downloadFolder = './downloads';
+// const downloadFolder = './downloads';
+const downloadFolder = 'C:/JsonData/';
 
 const getFormatDate = (date = new Date() ) => {
 
@@ -196,7 +197,7 @@ const loadTable = async (schema, table) => {
         
         //  Una ves que los archivos se descomprimen ,  
         //  estos mismos se trabajan para que sean insertados en la base
-        const save = await insertDataJson(readFiles,table);
+        await insertDataJson(readFiles,table);
 
 
     }catch (error) {
@@ -209,8 +210,14 @@ const insertDataJson = async (files = [],tableName) => {
       for(let x = 0;x < files.length ; x++){
           const jsonData = leerFileJson(files[x]);
           const sqlInsert = generateInsertTableSQL(jsonData,tableName);
-          console.log(sqlInsert);
-        //   const llInsert = await executeQuery(sqlInsert);
+
+          for (let value of sqlInsert){
+            // const llInsert = await executeQuery(value);
+            // console.log(llInsert);
+            // console.log(value);
+          }
+          console.log(`Datos insertados para ${tableName.green} correctamente!`);
+          return new Promise((resolve) => {}); ;
       }
     }catch(error){
       throw new Error('Ocurrio un error inesperado: '+ error);

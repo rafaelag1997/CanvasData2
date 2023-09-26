@@ -5,8 +5,8 @@ import { executeQuery } from "./server/conexion.js";
 
 // listado de tablas que necesitamos importar
 const ListTables = [
-    'users',
-    // 'courses',
+    // 'users',
+    'courses',
     // 'assignment_groups',
     // 'assignments',
     // 'submissions',
@@ -39,7 +39,6 @@ const main = async () =>{
         // vamos importar la informacion de cada una de las tablas
 
         for(let x = 0 ; x < ListTables.length  ; x++){
-        //   let x = 0;
           // verificamos que existan las tablas que necesitamos en el listado de tablas
             try{
 

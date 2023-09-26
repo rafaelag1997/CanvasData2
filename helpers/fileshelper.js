@@ -2,7 +2,6 @@ import fs from 'fs';
 import zlib  from 'zlib';
 import { promises as fsPromises } from 'fs';
 import colors from "colors";
-import { generateInsertTableSQL } from './sqlscripthelper.js';
 
 // leer archivo Json y retornar un objeto json de su valor 
 const leerFileJson = (route) => {
@@ -14,6 +13,10 @@ const leerFileJson = (route) => {
     // Se convierte el contenido a un Json Valido cambiando saltos de linea por comas 
 
     let json = '[' + info.replaceAll(/\n/g, ',').slice(0,info.length-1) +  ' ] ';
+
+    // vamos a sobreescribir el archivo con un formato de JSON válido
+
+    fs.writeFileSync( route , json ,  { encoding: 'utf-8' } )
 
     return JSON.parse(json);
 }

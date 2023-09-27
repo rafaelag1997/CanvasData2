@@ -18,6 +18,7 @@ const executeQuery = async (query) => {
 
   } catch (error) {
     console.error('Error al conectar con SQL Server:', error.message);
+    throw error;
   }
 }
 

@@ -3,7 +3,8 @@ import axios from "axios";
 import { generateCreateTableSQL , generateInsertTableSQL } from "./sqlscripthelper.js";
 import { executeQuery } from "../server/conexion.js";
 import fs from 'fs';
-import { leerFileJson, unZipFile } from "./fileshelper.js";
+import { readFileJson, unZipFile, createDirectory } from "./fileshelper.js";
+
 // import cmd from 'node-command-line';
 
 
@@ -15,7 +16,7 @@ const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
 
 // Carpeta donde se guardan los archivos que se van a descargar GZ 
 // const downloadFolder = './downloads';
-const downloadFolder = 'C:/JsonData/';
+const downloadFolder = 'C:/jsonData/';
 
 const getFormatDate = (date = new Date() ) => {
 
@@ -42,7 +43,7 @@ const consultState = async (endpoint, body, axiosConfig) => {
       // para inciar con la descarga de los documentos
       while (status === null || status.status !== 'complete') {
         status = await postJsonAxios(endpoint, body, axiosConfig);
-        console.log(status.status + '...');
+        console.log(`status : ${status.status.green} , Hora de respuesta : ${getFormatDate()} `);
         if (status.status !== 'complete') {
           // Si el estado no está completo, espera 10 segundos antes de la siguiente consulta
           await new Promise(resolve => setTimeout(resolve, 10000));
@@ -102,19 +103,24 @@ const postJsonAxios = async (endpoint,body,axiosConfig) =>{
 
 // Descargar los archivos que se generan desde la API 
 
-const downloadFiles =  async (files) =>{
+const downloadFiles =  async (files, tableName ) =>{
+
+    // Crea la carpeta si no la elimina con todo y contenido
+    createDirectory(`${downloadFolder}${tableName}`);
+
     const jsonFiles = [];
     // Accede a la propiedad "urls" del objeto y recorre las URLs
     for (const key in files.urls) {
         if (files.urls.hasOwnProperty(key)) {
-            
         const url = files.urls[key].url;
         // formateamos el nombre del documento 
         const fileName =  key.slice(key.indexOf('/')+1,key.length) ;
         // TODO descargar archivos
         try {
-            console.log(`Descargando archivo desde ${url}`);
-            const filePath = `${downloadFolder}/${fileName}`;
+            // desde ${url}
+            console.log(`Descargando archivo...`);
+            const filePath = `${downloadFolder}${tableName}/${fileName}`;
+
             const response = await axios.get(url, { responseType: 'stream' });
             if (response.status === 200) {
                 const writer = fs.createWriteStream(filePath);
@@ -193,11 +199,11 @@ const loadTable = async (schema, table) => {
         
         // se leen los archivos y regresamos el arreglo con los mismos
 
-        const readFiles = await downloadFiles(files);
+        const readFiles = await downloadFiles(files, table);
         
         //  Una ves que los archivos se descomprimen ,  
         //  estos mismos se trabajan para que sean insertados en la base
-        await insertDataJson(readFiles,table);
+        await insertDataJson(readFiles,table,schema.schema.properties );
 
 
     }catch (error) {
@@ -205,19 +211,19 @@ const loadTable = async (schema, table) => {
     } 
 }
 
-const insertDataJson = async (files = [],tableName) => {
+const insertDataJson = async (files = [], tableName, properties ) => {
     try{
       for(let x = 0;x < files.length ; x++){
-          const jsonData = leerFileJson(files[x]);
-          const sqlInsert = generateInsertTableSQL(jsonData,tableName);
-
-          for (let value of sqlInsert){
-            // const llInsert = await executeQuery(value);
-            // console.log(llInsert);
-            // console.log(value);
-          }
+          const fileName = files[x];
+          readFileJson(fileName);
+        //const jsonData = readFileJson(files[x]);
+          const sqlInsert = generateInsertTableSQL( tableName, properties );
+          const query = `EXEC sp_LoadJsonData 
+                         @jsonFile = N'${fileName}' , 
+                         @insertStatement = N'${sqlInsert}'`;
+          const sqlResult = await executeQuery(query);
+          console.log(sqlResult);
           console.log(`Datos insertados para ${tableName.green} correctamente!`);
-          return new Promise((resolve) => {}); ;
       }
     }catch(error){
       throw new Error('Ocurrio un error inesperado: '+ error);

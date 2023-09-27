@@ -4,7 +4,7 @@ import { promises as fsPromises } from 'fs';
 import colors from "colors";
 
 // leer archivo Json y retornar un objeto json de su valor 
-const leerFileJson = (route) => {
+const readFileJson = (route) => {
 
     if( !fs.existsSync( route ) ) return [] ;
         
@@ -43,8 +43,31 @@ const  unZipFile =  async (filePath) => {
       throw error;
     }
   }
+
+   const createDirectory = (ruta) =>{
+    try {
+      // Verificar si la carpeta ya existe
+      // const stats = await fsPromises.stat(ruta);
+      console.log("antes de");
+      // Si es un directorio, eliminarlo con todo su contenido
+      if (fs.existsSync(ruta)) {
+            fs.rmSync(ruta, { recursive: true });
+      }
+      // Crear la carpeta
+       fs.mkdirSync(ruta);
+      console.log(`Carpeta ${ruta} creada correctamente.`);
+
+    } catch (error) {
+      // La carpeta no existe o hubo un error al verificarla, lo ignoramos
+      console.log("Error al crear la carpeta ",error.message);
+      throw error ;
+    }
+  
+ 
+  }
   
 export{
-    leerFileJson,
-    unZipFile
+    readFileJson,
+    unZipFile,
+    createDirectory
 }

@@ -5,8 +5,8 @@ import { executeQuery } from "./server/conexion.js";
 
 // listado de tablas que necesitamos importar
 const ListTables = [
-    // 'users',
-    'courses',
+    'users',
+    'courses'
     // 'assignment_groups',
     // 'assignments',
     // 'submissions',
@@ -44,12 +44,12 @@ const main = async () =>{
 
                 if (buscaTabla(tables.tables,ListTables[x])){
                     console.log(`Consultar Schema : ${ListTables[x].green} `);
-
                     // consultamos el schema de la tabla que si existe 
                     const schema = await getJsonAxios(`/dap/query/canvas/table/${ListTables[x]}/schema`,axiosConfig);
 
                     // Creamos la tabla e iniciamos con el proceso de inserción de datos 
                     await loadTable(schema,ListTables[x]);
+                    
                 }
             }catch(error){
                 console.log(`Error con la tabla ${ListTables[x].green} `, error.name,":",error.message);

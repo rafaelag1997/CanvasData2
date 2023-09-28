@@ -1,0 +1,30 @@
+
+-- cambia el nombre de la base por la tuya o deja la misma si deseas
+
+USE dbCanvasData;
+DELETE FROM courses;
+DROP PROC IF EXISTS sp_LoadJsonData;
+GO
+CREATE PROC sp_LoadJsonData(
+	@jsonFile NVARCHAR(MAX),
+	@insertStatement NVARCHAR(MAX)
+)
+AS
+BEGIN 
+	DECLARE @sql NVARCHAR(MAX);
+
+    -- Genera la consulta dinámica
+    SET @sql = N'
+        DECLARE @json NVARCHAR(MAX);
+        SELECT @json = BulkColumn
+        FROM OPENROWSET (BULK ' + QUOTENAME(@jsonFile, '''') + ', SINGLE_CLOB) import;
+
+        -- Ejecutar la sentencia INSERT dinámica
+
+        ' + REPLACE(@insertStatement, '''', CHAR(39)) + '
+    ';
+    -- Ejecuta la consulta dinámica
+    EXEC sp_executesql @sql;
+    
+END
+GO

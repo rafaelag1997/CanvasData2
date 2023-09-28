@@ -14,7 +14,7 @@ const readFileJson = (route) => {
 
     let json = '[' + info.replaceAll(/\n/g, ',').slice(0,info.length-1) +  ' ] ';
 
-    // vamos a sobreescribir el archivo con un formato de JSON válido
+    // Sobreescribir el archivo con un formato de JSON válido
 
     fs.writeFileSync( route , json ,  { encoding: 'utf-8' } )
 
@@ -47,14 +47,12 @@ const  unZipFile =  async (filePath) => {
    const createDirectory = (ruta) =>{
     try {
       // Verificar si la carpeta ya existe
-      // const stats = await fsPromises.stat(ruta);
-      console.log("antes de");
       // Si es un directorio, eliminarlo con todo su contenido
       if (fs.existsSync(ruta)) {
             fs.rmSync(ruta, { recursive: true });
       }
       // Crear la carpeta
-       fs.mkdirSync(ruta);
+      fs.mkdirSync(ruta);
       console.log(`Carpeta ${ruta} creada correctamente.`);
 
     } catch (error) {
@@ -62,8 +60,6 @@ const  unZipFile =  async (filePath) => {
       console.log("Error al crear la carpeta ",error.message);
       throw error ;
     }
-  
- 
   }
   
 export{

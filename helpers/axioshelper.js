@@ -175,6 +175,8 @@ const loadTable = async (schema, table) => {
             }
         }
 
+        // TODO:
+        // la siguiente fecha será calculada por el servidor
         let currentDateObj = new Date();
         let numberOfMlSeconds = currentDateObj.getTime();
         let addMlSeconds = (60 * 60000) * 10; // el valor de 10 hrs 
@@ -218,12 +220,13 @@ const insertDataJson = async (files = [], tableName, properties ) => {
           readFileJson(fileName);
         //const jsonData = readFileJson(files[x]);
           const sqlInsert = generateInsertTableSQL( tableName, properties );
+        //Creamos la cadena para ejecutar el SP
           const query = `EXEC sp_LoadJsonData 
                          @jsonFile = N'${fileName}' , 
                          @insertStatement = N'${sqlInsert}'`;
+        
           const sqlResult = await executeQuery(query);
-          console.log(sqlResult);
-          console.log(`Datos insertados para ${tableName.green} correctamente!`);
+          console.log(`${sqlResult.rowsAffected[2].toString().green} registros insertados para ${tableName.green} correctamente!`);
       }
     }catch(error){
       throw new Error('Ocurrio un error inesperado: '+ error);

@@ -5,8 +5,8 @@ import { executeQuery } from "./server/conexion.js";
 
 // listado de tablas que necesitamos importar
 const ListTables = [
-    'users',
-    'courses'
+    // 'users',
+    'courses',
     // 'assignment_groups',
     // 'assignments',
     // 'submissions',

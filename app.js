@@ -5,12 +5,12 @@ import { executeQuery } from "./server/conexion.js";
 
 // listado de tablas que necesitamos importar
 const ListTables = [
-    // 'users',
+    'users',
     'courses',
-    // 'assignment_groups',
-    // 'assignments',
-    // 'submissions',
-    // 'scores'
+    'assignment_groups',
+    'assignments',
+    'submissions',
+    'scores'
 ]
 
 // Verifica si las tablas que pretendemos exportar existen en la base

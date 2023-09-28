@@ -15,7 +15,7 @@ const clientId = 'us-east-1#af49ca6b-7ce8-4bb2-ac36-3a72d119518c';
 const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
 
 // Carpeta donde se guardan los archivos que se van a descargar GZ 
-// const downloadFolder = './downloads';
+
 const downloadFolder = 'C:/jsonData/';
 
 const getFormatDate = (date = new Date() ) => {
@@ -220,6 +220,7 @@ const insertDataJson = async (files = [], tableName, properties ) => {
           readFileJson(fileName);
         //const jsonData = readFileJson(files[x]);
           const sqlInsert = generateInsertTableSQL( tableName, properties );
+        //console.log(sqlInsert);
         //Creamos la cadena para ejecutar el SP
           const query = `EXEC sp_LoadJsonData 
                          @jsonFile = N'${fileName}' , 

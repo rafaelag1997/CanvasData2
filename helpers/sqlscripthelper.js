@@ -45,7 +45,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
 
     let metaColumns =  Object.keys(jsonSchema.properties.meta.properties).map((key) => {
       const property = jsonSchema.properties.meta.properties[key];
-      const columnName = !ReservadasSQLServer.includes(key.toUpperCase()) ? key : "["+ key + "]" ;
+      const columnName =  key ;
       const columnType = varTypeProperty(property);
       return `${columnName} ${columnType}`;
     });
@@ -65,6 +65,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     // Ahora el Insert debe de contener todas la columnas del Schema de la tabla y si la misma
     // no tiene valores en el valor actual, se debe de Agregar al insert con el value NULL
     let claves = Object.keys(properties.value.properties);
+    claves = claves.map( key =>{ return !ReservadasSQLServer.includes(key.toUpperCase()) ? key : "["+ key + "]" });
     let id = Object.keys(properties.key.properties);
     let meta = Object.keys(properties.meta.properties);
     const lcInsert = `INSERT INTO ${tableName} (${id.join(', ')}, ${claves.join(', ')} , ${meta.join(', ')}) 

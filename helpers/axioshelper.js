@@ -10,6 +10,7 @@ import { readFileJson, unZipFile, createDirectory } from "./fileshelper.js";
 
 // URL base de la API de Canvas Data2
 const baseUrl = 'https://api-gateway.instructure.com';
+
 // Client ID y Client Secret 
 const clientId = 'us-east-1#af49ca6b-7ce8-4bb2-ac36-3a72d119518c';
 const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
@@ -17,6 +18,10 @@ const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
 // Carpeta donde se guardan los archivos que se van a descargar GZ 
 
 const downloadFolder = 'C:/jsonData/';
+
+// este token va a cambiar durante la ejecusión
+let _ACCESS_TOKEN = null ;
+
 
 const getFormatDate = (date = new Date() ) => {
 
@@ -43,7 +48,7 @@ const consultState = async (endpoint, body, axiosConfig) => {
       // para inciar con la descarga de los documentos
       while (status === null || status.status !== 'complete') {
         status = await postJsonAxios(endpoint, body, axiosConfig);
-        console.log(`status : ${status.status.green} , Hora de respuesta : ${getFormatDate()} `);
+        console.log(`Status : ${status.status.green} , Hora de respuesta : ${getFormatDate()} `);
         if (status.status !== 'complete') {
           // Si el estado no está completo, espera 10 segundos antes de la siguiente consulta
           await new Promise(resolve => setTimeout(resolve, 10000));
@@ -55,29 +60,50 @@ const consultState = async (endpoint, body, axiosConfig) => {
     }
   };
 
-// Función para obtener un token de acceso
+// Función para obtener un token de acceso  
+
 const getAccessToken = async () =>{
     try {
+         
+        let llValido =  false ;
 
-        console.log("Generando Token...".yellow)
-        const credentials = `${clientId}:${clientSecret}`;
-        // Codifica las credenciales en Base64
-        const base64Credentials = Buffer.from(credentials).toString('base64');
-        const axiosConfig = {
-            headers: {
-                'Authorization': `Basic ${base64Credentials}`,
-                'Content-Type' : `application/x-www-form-urlencoded`,
-            }
+        if(_ACCESS_TOKEN != null ){
+            const expiresIn = _ACCESS_TOKEN.expires_in; 
+            const tokenIssuedAt = new Date().getTime(); 
+
+            // es el tiempo estimado de expiracion
+            const expirationTime = tokenIssuedAt + expiresIn * 1000; 
+            // Marca de tiempo actual
+            const currentTime = new Date().getTime(); 
+
+            // si se cumple , no será necesario volver a hacer la solicitud
+            llValido = currentTime < expirationTime;
         }
-        // Agregamos los valores al body
-        const body = new FormData();
-        body.append("grant_type","client_credentials");
 
-        const response = await postJsonAxios(`/ids/auth/login`,body,axiosConfig);
+        if( !llValido ){
+            console.log("Generando Token...".yellow)
+            const credentials = `${clientId}:${clientSecret}`;
+            // Codifica las credenciales en Base64
+            const base64Credentials = Buffer.from(credentials).toString('base64');
+            const axiosConfig = {
+                headers: {
+                    'Authorization': `Basic ${base64Credentials}`,
+                    'Content-Type' : `application/x-www-form-urlencoded`,
+                }
+            }
+            // Agregamos los valores al body
+            const body = new FormData();
+            body.append("grant_type","client_credentials");
 
-        console.log("Token Adquirido!".green)
+            const response = await postJsonAxios(`/ids/auth/login`,body,axiosConfig);
 
-        return response.access_token;
+            console.log("Token Adquirido!".green);
+
+            _ACCESS_TOKEN = response;
+        }
+
+         return _ACCESS_TOKEN.access_token
+         
     } catch (error) {
         throw new Error('No se pudo obtener el token de acceso '+ error);
     }

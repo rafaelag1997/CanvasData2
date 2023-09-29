@@ -11,7 +11,7 @@ const readFileJson = (route) => {
     const info = fs.readFileSync( route , { encoding: 'utf-8' });
 
     // Se convierte el contenido a un Json Valido cambiando saltos de linea por comas 
-
+    
     let json = '[' + info.replaceAll(/\n/g, ',').slice(0,info.length-1) +  ' ] ';
 
     // Sobreescribir el archivo con un formato de JSON válido
@@ -62,8 +62,33 @@ const  unZipFile =  async (filePath) => {
     }
   }
   
+// Capturador de errores
+
+const saveErrorLog = (msg) =>{
+  try{
+ // ruta de el archivo de errores 
+    const filePath = './error.log';
+    let errorLog = '';
+    if( fs.existsSync(filePath)){
+      // si existe , leemos el contenido
+       errorLog = fs.readFileSync( filePath , { encoding: 'utf-8' });
+    }
+    const fechaActual = new Date();
+    const opciones = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
+    const fechaFormateada = fechaActual.toLocaleString('es-MX', opciones);
+   
+    const writeMsg = fechaFormateada + '\t' + msg  + '\n' + errorLog ;
+    // Sobreescribir el archivo con un formato de JSON válido
+    fs.writeFileSync( filePath , writeMsg ,  { encoding: 'utf-8' } )
+  }catch(error){
+    console.log(error.message)
+  }
+   
+}
+
 export{
     readFileJson,
     unZipFile,
-    createDirectory
+    createDirectory,
+    saveErrorLog
 }

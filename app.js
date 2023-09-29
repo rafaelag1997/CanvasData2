@@ -1,22 +1,23 @@
 import colors from "colors";
-import { getAccessToken,getJsonAxios,postJsonAxios,loadTable} from "./helpers/axioshelper.js";
-import { executeQuery } from "./server/conexion.js";
+import { getAccessToken, getJsonAxios, loadTable } from "./helpers/axioshelper.js";
+import { saveErrorLog } from "./helpers/fileshelper.js";
 
 
 // listado de tablas que necesitamos importar
-const ListTables = [
-    'users',
-    'courses',
-    'assignment_groups',
-    'assignments',
+let ListTables = [
+    'context_external_tools',
+    // 'courses',
+    // 'assignment_groups',
+    // 'assignments',
     'submissions',
-    'scores'
+    // 'scores',
+    // 'wikis'
 ]
 
 // Verifica si las tablas que pretendemos exportar existen en la base
 const buscaTabla  = (tablas,tabla) =>{
         if(!tablas.includes(tabla)) 
-            console.log(`La tabla ${tabla.green} no se encuentra en el schema de la BD `);
+            console.log(`La tabla ${tabla.yellow} no se encuentra en el schema de la BD de CanvasData2 `);
     return tablas.includes(tabla);
 }
 
@@ -36,6 +37,9 @@ const main = async () =>{
         // consultamos API para verificar que existan las tablas que necesitamos exportar
         const tables = await getJsonAxios('/dap/query/canvas/table',axiosConfig);
 
+        // solo si se quiere descargar toda la base si no , se comenta esta línea 
+        // ListTables = tables.tables;
+
         // vamos importar la informacion de cada una de las tablas
 
         for(let x = 0 ; x < ListTables.length  ; x++){
@@ -53,11 +57,15 @@ const main = async () =>{
                 }
             }catch(error){
                 console.log(`Error con la tabla ${ListTables[x].green} `, error.name,":",error.message);
+                // Guardar los errores en error .log
+                const errorMsg = `Error con la tabla ${ListTables[x]} -- ${error.name} : ${error.message} `;
+                saveErrorLog(errorMsg);
             }   
         }
 
     }catch (error) {
         console.error('Ha ocurrido un error: '+ error.message);
+        saveErrorLog('Ha ocurrido un error: '+ error.message);
     }
     console.timeEnd('Tiempo de ejecución'.cyan);
 

@@ -28,7 +28,7 @@ const varTypeProperty = (property) =>{
   return type === "integer" ? ( format === "int32" ? "INT" : "BIGINT" ):
          type === "number"  ? "FLOAT":
          type === "boolean" ? "BIT" :
-         type === "string"  ? `NVARCHAR(${property.maxLength || 255})` :
+         type === "string"  ? `NVARCHAR(${ (property.maxLength <= 4000 ? property.maxLength || 255 : 'MAX') })` :
          type === "object"  ? 'NVARCHAR(MAX)':
          'NVARCHAR(MAX)';
 }
@@ -90,8 +90,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     // y hacer el reemplazo en el SP
 
     let lcSelect = `SELECT ISNULL(j1.[id],NULL)  id, 
-    ${arrayProperties.join(`,
-    `)},
+    ${arrayProperties.join(',')},
     ISNULL(j3.[ts], NULL) [ts] ,
     ISNULL(j3.[action], NULL) [action]  
     FROM OPENJSON(@json) 
@@ -106,8 +105,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     ) j1
     CROSS APPLY OPENJSON([value])
     WITH (
-      ${arrayPropertiesType.join(`,
-    `)}
+      ${arrayPropertiesType.join(',')}
     ) j2
     CROSS APPLY OPENJSON([meta])
     WITH (

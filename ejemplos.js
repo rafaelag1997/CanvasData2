@@ -1,3 +1,6 @@
+
+// parea conultar solo el ejemplo de la estructura
+
 const properties = {
     "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

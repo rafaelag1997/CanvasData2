@@ -3,7 +3,7 @@ import axios from "axios";
 import { generateCreateTableSQL , generateInsertTableSQL } from "./sqlscripthelper.js";
 import { executeQuery } from "../server/conexion.js";
 import fs from 'fs';
-import { readFileJson, unZipFile, createDirectory } from "./fileshelper.js";
+import { readFileJsonLineByLine,formatJsonFileLineByLine, unZipFile, createDirectory } from "./fileshelper.js";
 
 // import cmd from 'node-command-line';
 
@@ -18,6 +18,8 @@ const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
 // Carpeta donde se guardan los archivos que se van a descargar GZ 
 
 const downloadFolder = 'C:/jsonData/';
+
+const bactchFragments = 25000 ;
 
 // este token va a cambiar durante la ejecusión
 let _ACCESS_TOKEN = null ;
@@ -103,7 +105,7 @@ const getAccessToken = async () =>{
         }
 
          return _ACCESS_TOKEN.access_token
-         
+
     } catch (error) {
         throw new Error('No se pudo obtener el token de acceso '+ error);
     }
@@ -131,7 +133,7 @@ const postJsonAxios = async (endpoint,body,axiosConfig) =>{
 
 const downloadFiles =  async (files, tableName ) =>{
 
-    // Crea la carpeta si no la elimina con todo y contenido
+    // Crea la carpeta ,si existe la elimina con todo y contenido
     createDirectory(`${downloadFolder}${tableName}`);
 
     const jsonFiles = [];
@@ -189,8 +191,6 @@ const loadTable = async (schema, table) => {
         // archivos que genera la API
 
         // obtenemos el token para consumir el API, puede que el tiempo de expiracion 
-        // caduque, por eso mismo se vuelve a generar por cada tabla que se requiera
-        // generar los archivos
 
         const token = await getAccessToken();
         
@@ -205,13 +205,14 @@ const loadTable = async (schema, table) => {
         // la siguiente fecha será calculada por el servidor
         let currentDateObj = new Date();
         let numberOfMlSeconds = currentDateObj.getTime();
-        let addMlSeconds = (60 * 60000) * 10; // el valor de 10 hrs 
+        let addMlSeconds = (60 * 60000) * 10; // el valor de 10 hrs antes de la petición
         let newDateObj = new Date(numberOfMlSeconds - addMlSeconds);
 
         // Agregamos los valores al body
         let body = {
             format :"jsonl",
-            since : getFormatDate(newDateObj)
+            // since : getFormatDate(newDateObj)
+            since:"2023-01-01T00:00:00Z" // fecha de inicio de registros del servicio
         }
 
         // Esta función hace las peticiones necesarias cada 10 segundos , hasta que 
@@ -240,24 +241,41 @@ const loadTable = async (schema, table) => {
 }
 
 const insertDataJson = async (files = [], tableName, properties ) => {
-    try{
-      for(let x = 0;x < files.length ; x++){
-          const fileName = files[x];
-          readFileJson(fileName);
-        //const jsonData = readFileJson(files[x]);
-          const sqlInsert = generateInsertTableSQL( tableName, properties );
-        //console.log(sqlInsert);
-        //Creamos la cadena para ejecutar el SP
-          const query = `EXEC sp_LoadJsonData 
-                         @jsonFile = N'${fileName}' , 
-                         @insertStatement = N'${sqlInsert}'`;
+    
+    // se genera el query dinámicamente 
+    const sqlInsert = generateInsertTableSQL( tableName, properties );
+
+    for(let x = 0;x < files.length ; x++){
+        const fileName = files[x];
+        try{
         
-          const sqlResult = await executeQuery(query);
-          console.log(`${sqlResult.rowsAffected[2].toString().green} registros insertados para ${tableName.green} correctamente!`);
+          // esta versión debio cambiar porque los archivos fueron muy variables.
+          // const jsonData = readFileJson(files[x]);
+          const res = await readFileJsonLineByLine(fileName,bactchFragments);
+          console.log(res.recordsNumber > 0 ? 
+             `${res.arrayFragments.length.toString().green} fragmento(s) creado(s) para ${res.recordsNumber.toString().green} registros `
+           : `No se crearon fragmentos para este archivo`);
+        //   const outputFile = `${downloadFolder}${tableName}.json`;
+        //   await formatJsonFileLineByLine(fileName,outputFile);
+         
+       
+          console.log(`Hora de Inicio : ${getFormatDate()} ${"Insertando información...".yellow}`);
+
+          for(const item of res.arrayFragments){
+         // Creamos la cadena para ejecutar el SP
+
+         // item para el fragmentado en ves de outputFile y el sp es sp_LoadJsonData2 para el out
+            const query = `EXEC sp_LoadJsonData
+                            @jsonFile = N'${item}' , 
+                            @insertStatement = N'${sqlInsert}'`;
+            const sqlResult = await executeQuery(query);
+          }
+        console.log(`Hora de Fin :    ${getFormatDate()} ${sqlResult.rowsAffected[4].toString().green} Registros insertados para ${tableName.green} correctamente!`);
+        }catch(error){
+            throw new Error(`Problemas con la inserción de datos de el archivo ${fileName}: `+ error);
+          }
       }
-    }catch(error){
-      throw new Error('Ocurrio un error inesperado: '+ error);
-    }
+    
   
   }
 

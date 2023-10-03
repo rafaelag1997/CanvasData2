@@ -15,4 +15,4 @@
 5.- Identificar el client-id y client-secret para consumir la API 
 
 
-6.- Crea una carpeta llamada `C:jsonData/` , ya que es donde se almacenarán los archivos descargados
+6.- Crea una carpeta llamada `C:jsonData/` , ya que es donde se almacenarán los archivos descargados, cada vez que corre el proceso, los documentos de estas carpetas que se crean en ellas se eliminan 

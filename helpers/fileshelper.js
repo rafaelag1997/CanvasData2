@@ -1,9 +1,13 @@
 import fs from 'fs';
+import  readline  from 'readline';
 import zlib  from 'zlib';
 import { promises as fsPromises } from 'fs';
 import colors from "colors";
 
 // leer archivo Json y retornar un objeto json de su valor 
+// La siguiente función, trabaja de manera adecuada con archivos que no contengan gran cantidad de registros
+// que superen la cantidad de caracteres permitidos por una cadena en sql server
+
 const readFileJson = (route) => {
 
     if( !fs.existsSync( route ) ) return [] ;
@@ -12,7 +16,7 @@ const readFileJson = (route) => {
 
     // Se convierte el contenido a un Json Valido cambiando saltos de linea por comas 
     
-    let json = '[' + info.replaceAll(/\n/g, ',').slice(0,info.length-1) +  ' ] ';
+    let json = `${'[' + info.replaceAll(/\n/g, ',').slice(0,info.length-1) +  ']'}`;
 
     // Sobreescribir el archivo con un formato de JSON válido
 
@@ -20,6 +24,92 @@ const readFileJson = (route) => {
 
     return JSON.parse(json);
 }
+
+// leer archivo JSON linea por linea
+
+const readFileJsonLineByLine1 = (route) => {
+
+
+  if (!fs.existsSync(route)) return [];
+
+  const jsonLines = [];
+  const readStream = fs.createReadStream(route);
+  const rl = readline.createInterface({
+    input: readStream,
+    output: process.stdout,
+    terminal: false
+  });
+
+  rl.on('line', (line) => {
+    // Procesar cada línea y agregarla al array jsonLines
+    jsonLines.push(line);
+  });
+
+  return new Promise((resolve, reject) => {
+    rl.on('close', () => {
+      try {
+        // Unir todas las líneas en un solo JSON válido
+        // const jsonString = `[${jsonLines.join(',')}]`;
+        // const jsonData = JSON.parse(jsonString);
+        console.log(jsonLines.length + " Nom ");
+        // Sobreescribir el archivo original
+        // fs.writeFileSync(route, jsonString, { encoding: 'utf-8' });
+        // resolve(jsonData);
+        resolve("termina")
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+};
+
+// Lectura del Archivo Linea por Linea 
+const readFileJsonLineByLine = async (filePath, batchSize) => {
+
+  const outputFolder = `${filePath}_fragments`;
+  createDirectory(outputFolder);
+
+  const readStream = fs.createReadStream(filePath);
+  const rl = readline.createInterface({
+    input: readStream,
+    output: process.stdout,
+    terminal: false,
+  });
+
+  let recordsNumber = 0;
+  let fragments = 1;
+  let batch = [];
+  let arrayFragments = [];
+
+  for await (const line of rl) {
+
+    // quitamos los separadores de linea y párrafo
+    batch.push(JSON.parse(line.replace(/[\u2028\u2029]/g, ''))); 
+    recordsNumber++;
+
+    if (recordsNumber % batchSize === 0) {
+      const outputFileName = `${fragments}.json`;
+      const outputFilePath = `${filePath}_fragments/${outputFileName}`;
+      fs.writeFileSync(outputFilePath, `${JSON.stringify(batch)}` );
+      
+      arrayFragments.push(outputFilePath);
+      fragments++;
+      batch = [];
+    }
+  }
+
+  if (batch.length > 0) {
+    const outputFileName = `${fragments}.json`;
+    const outputFilePath = `${filePath}_fragments/${outputFileName}`;
+    fs.writeFileSync(outputFilePath, `${JSON.stringify(batch)}` );
+    arrayFragments.push(outputFilePath);
+
+  }
+
+  return { arrayFragments , recordsNumber  } // numero de fragmentos creados 
+}
+
+
 
 // Funcion para descomprimir el archivo 
 
@@ -86,9 +176,48 @@ const saveErrorLog = (msg) =>{
    
 }
 
+
+// Pruebas para formatear el archivo completo
+
+const  formatJsonFileLineByLine = async (inputFile,outputFile) => {
+
+  const inputReadStream = fs.createReadStream(inputFile, 'utf-8');
+  const outputWriteStream = fs.createWriteStream(outputFile, 'utf-8');
+  const rl = readline.createInterface({
+    input: inputReadStream,
+    output: outputWriteStream,
+    terminal: false,
+  });
+
+  for await (const line of rl) {
+    // Realiza las modificaciones deseadas en 'line' de forma síncrona
+    const lineaModificada = line.replace(/[\u2028\u2029]/g, '') + ',';
+    outputWriteStream.write(lineaModificada);
+  }
+
+  // Esta promesa espera a que el archivo cierre completamente para que pueda continuar con 
+  // El proceso
+
+  await new Promise((resolve, reject) => {
+    outputWriteStream.end((err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+  rl.close();
+
+}
+
+
 export{
-    readFileJson,
+    // readFileJson,
+    readFileJsonLineByLine,
+    formatJsonFileLineByLine,
     unZipFile,
     createDirectory,
     saveErrorLog
 }
+

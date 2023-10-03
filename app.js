@@ -5,7 +5,7 @@ import { saveErrorLog } from "./helpers/fileshelper.js";
 
 // listado de tablas que necesitamos importar
 let ListTables = [
-    'context_external_tools',
+    // 'context_external_tools',
     // 'courses',
     // 'assignment_groups',
     // 'assignments',
@@ -60,6 +60,7 @@ const main = async () =>{
                 // Guardar los errores en error .log
                 const errorMsg = `Error con la tabla ${ListTables[x]} -- ${error.name} : ${error.message} `;
                 saveErrorLog(errorMsg);
+
             }   
         }
 

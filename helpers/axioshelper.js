@@ -255,22 +255,22 @@ const insertDataJson = async (files = [], tableName, properties ) => {
           console.log(res.recordsNumber > 0 ? 
              `${res.arrayFragments.length.toString().green} fragmento(s) creado(s) para ${res.recordsNumber.toString().green} registros `
            : `No se crearon fragmentos para este archivo`);
+       
         //   const outputFile = `${downloadFolder}${tableName}.json`;
         //   await formatJsonFileLineByLine(fileName,outputFile);
          
-       
           console.log(`Hora de Inicio : ${getFormatDate()} ${"Insertando información...".yellow}`);
 
           for(const item of res.arrayFragments){
          // Creamos la cadena para ejecutar el SP
-
          // item para el fragmentado en ves de outputFile y el sp es sp_LoadJsonData2 para el out
             const query = `EXEC sp_LoadJsonData
                             @jsonFile = N'${item}' , 
                             @insertStatement = N'${sqlInsert}'`;
             const sqlResult = await executeQuery(query);
           }
-        console.log(`Hora de Fin :    ${getFormatDate()} ${sqlResult.rowsAffected[4].toString().green} Registros insertados para ${tableName.green} correctamente!`);
+        console.log(`Hora de Fin :    ${getFormatDate()} Registros insertados para ${tableName.green} correctamente!`);
+    
         }catch(error){
             throw new Error(`Problemas con la inserción de datos de el archivo ${fileName}: `+ error);
           }

@@ -17,7 +17,7 @@ const ReservadasSQLServer = [
   "TRUNCATE", "DECLARE","TRY_CONVERT","DEFAULT","OFFSET","TSEQUAL","DELETE","UNION","OPEN","UNIQUE","DESC",
   "UPDATE","DISTINCT","OPENQUERY","UPDATETEXT","DISTRIBUTED","OPENROWSET","UNPIVOT","DISK","OPENXML","USE","DOUBLE","OPTION",
   "USER","DROP","VALUES","DUMP","ORDER","VARYING","ELSE","OUTER","VIEW","FIN","OVER","WAITFOR","ERRLVL","PERCENT","WHEN",
-  "ESCAPE","PIVOT","WHERE","EXCEPT","PLAN","WHILE","EXEC","PRECISION","WITH","Ejecute","PRIMARY","EXISTS","PRINT","PUBLIC",
+  "ESCAPE","PIVOT","WHERE","EXCEPT","PLAN","WHILE","EXEC","PRECISION","WITH","EXECUTE","PRIMARY","EXISTS","PRINT","PUBLIC",
 ];
 
 // funcion que nos retorna el valor del tipo de dato de la columna 
@@ -51,7 +51,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     });
 
 
-    const primaryKey = 'id INT PRIMARY KEY'; 
+    const primaryKey = 'id INT , CONSTRAINT PK_'+ tableName +' PRIMARY KEY (id)'; 
   
     const createTableSQL = `CREATE TABLE ${tableName} ( ${primaryKey}, ${columns.join(', ')}, ${metaColumns.join(', ')} );`;
   
@@ -113,47 +113,6 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
       [action] NVARCHAR(255) ''$.action''
     ) j3 `;
 
-    // let claves = Object.keys(jsonData[0].value); 
-    // // estructura del insert principal 
-    // const lcInsert = `INSERT INTO ${tableName} (id, ${claves.join(', ')}) VALUES `;
-    // let filas = [];
-    // let inserts = [];
-    // const lnCant = 1000 // es el limite de registros por insert
-    // let cuenta = 0 ;  // es el valor incremental de los registros 
-    //   for (let x = 0; x < jsonData.length ;x++ ){
-
-    //      const lnId = ` ${jsonData[x].key.id} `;
-    //      const valores = [];
-    //       for(const [key, value] of Object.entries(jsonData[x].value)){
-    //         let valor = ""
-    //         switch(typeof(value)){
-    //           case "number":
-    //             valor = value;
-    //           break;
-    //           case "string":
-    //             valor = "'" + value + "'"
-    //           break;
-    //           case "boolean":
-    //             valor = value ? 1 : 0 ;
-    //           break;
-    //           case "object":
-    //             valor = JSON.stringify(value);
-    //           break;
-    //         }
-    //         valores.push(valor);
-    //       }
-
-    //       filas.push(`( ${lnId}, ${valores.join(', ')} )`);
-    //       cuenta++;
-    //       // se crea un INSERT cada 1000 registros para que pueda insertarse en la base de datos
-
-    //       if(cuenta === lnCant || cuenta === jsonData.length){
-    //         // se reinicia el insert
-    //         inserts.push(lcInsert +  ` ${filas.join(', ')}`);
-    //         filas = [];
-    //         cuenta = 0;
-    //       }
-    //   }
      return [lcInsert,lcSelect].join(" ");  ;
   }
 

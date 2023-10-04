@@ -27,43 +27,6 @@ const readFileJson = (route) => {
 
 // leer archivo JSON linea por linea
 
-const readFileJsonLineByLine1 = (route) => {
-
-
-  if (!fs.existsSync(route)) return [];
-
-  const jsonLines = [];
-  const readStream = fs.createReadStream(route);
-  const rl = readline.createInterface({
-    input: readStream,
-    output: process.stdout,
-    terminal: false
-  });
-
-  rl.on('line', (line) => {
-    // Procesar cada línea y agregarla al array jsonLines
-    jsonLines.push(line);
-  });
-
-  return new Promise((resolve, reject) => {
-    rl.on('close', () => {
-      try {
-        // Unir todas las líneas en un solo JSON válido
-        // const jsonString = `[${jsonLines.join(',')}]`;
-        // const jsonData = JSON.parse(jsonString);
-        console.log(jsonLines.length + " Nom ");
-        // Sobreescribir el archivo original
-        // fs.writeFileSync(route, jsonString, { encoding: 'utf-8' });
-        // resolve(jsonData);
-        resolve("termina")
-      } catch (error) {
-        reject(error);
-      }
-    });
-  });
-};
-
-// Lectura del Archivo Linea por Linea 
 const readFileJsonLineByLine = async (filePath, batchSize) => {
 
   const outputFolder = `${filePath}_fragments`;
@@ -91,7 +54,6 @@ const readFileJsonLineByLine = async (filePath, batchSize) => {
       const outputFileName = `${fragments}.json`;
       const outputFilePath = `${filePath}_fragments/${outputFileName}`;
       fs.writeFileSync(outputFilePath, `${JSON.stringify(batch)}` );
-      
       arrayFragments.push(outputFilePath);
       fragments++;
       batch = [];
@@ -177,7 +139,8 @@ const saveErrorLog = (msg) =>{
 }
 
 
-// Pruebas para formatear el archivo completo
+// Pruebas para formatear el archivo completo, dado caso que los archivos 
+// Una cantidad menor de registros, pero que supere la cantidad de caracteres permitidos para una cadena en JS.
 
 const  formatJsonFileLineByLine = async (inputFile,outputFile) => {
 

@@ -6,10 +6,10 @@ import { saveErrorLog } from "./helpers/fileshelper.js";
 // listado de tablas que necesitamos importar
 let ListTables = [
     // 'context_external_tools',
-    // 'courses',
+    'courses',
     // 'assignment_groups',
     // 'assignments',
-    'submissions',
+    // 'submissions',
     // 'scores',
     // 'wikis'
 ]

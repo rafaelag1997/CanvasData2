@@ -19,10 +19,15 @@ const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
 
 const downloadFolder = 'C:/jsonData/';
 
-const bactchFragments = 25000 ;
+const bactchFragments = 30000 ;
 
-// este token va a cambiar durante la ejecusión
+// variables de configuracion
+
 let _ACCESS_TOKEN = null ;
+
+let _SNAPSHOT = null;
+
+let _LAST_UPDATE = null ;
 
 
 const getFormatDate = (date = new Date() ) => {
@@ -36,7 +41,7 @@ const getFormatDate = (date = new Date() ) => {
     const segundos = date.getSeconds().toString().padStart(2, '0');
 
     // Crear la cadena de fecha en el formato deseado
-    const fechaFormateada = `${año}-${mes}-${dia}T${hora}:${minutos}:${segundos}Z`;
+    const fechaFormateada = `${año}-${mes}-${dia} ${hora}:${minutos}:${segundos} `;
 
     return fechaFormateada ;
 }
@@ -201,22 +206,27 @@ const loadTable = async (schema, table) => {
             }
         }
 
-        // TODO:
-        // la siguiente fecha será calculada por el servidor
-        let currentDateObj = new Date();
-        let numberOfMlSeconds = currentDateObj.getTime();
-        let addMlSeconds = (60 * 60000) * 10; // el valor de 10 hrs antes de la petición
-        let newDateObj = new Date(numberOfMlSeconds - addMlSeconds);
 
         // Agregamos los valores al body
         let body = {
             format :"jsonl",
             // since : getFormatDate(newDateObj)
-            since:"2023-01-01T00:00:00Z" // fecha de inicio de registros del servicio
+            // since:"2023-01-01T00:00:00Z" // fecha de inicio de registros del servicio
         }
 
+        // si no está activo descarga todo el histórico
+
+        if(!_SNAPSHOT) {
+            body.since = _LAST_UPDATE ;
+        }
+
+        // let currentDateObj = new Date();
+        // let numberOfMlSeconds = currentDateObj.getTime();
+        // let addMlSeconds = (60 * 60000) * 4; // el valor de 10 hrs antes de la petición
+        // let newDateObj = new Date(numberOfMlSeconds - addMlSeconds);
+
         // Esta función hace las peticiones necesarias cada 10 segundos , hasta que 
-        // regrese el status de completo para la descarga de los documentos 
+        // regrese el status de complete para la descarga de los documentos 
 
         const status = await consultState(`/dap/query/canvas/table/${table}/data`,body,axiosConfig);
         
@@ -233,8 +243,6 @@ const loadTable = async (schema, table) => {
         //  Una ves que los archivos se descomprimen ,  
         //  estos mismos se trabajan para que sean insertados en la base
         await insertDataJson(readFiles,table,schema.schema.properties );
-
-
     }catch (error) {
         throw new Error('Ocurrio un error inesperado: '+ error);
     } 
@@ -258,18 +266,20 @@ const insertDataJson = async (files = [], tableName, properties ) => {
        
         //   const outputFile = `${downloadFolder}${tableName}.json`;
         //   await formatJsonFileLineByLine(fileName,outputFile);
-         
-          console.log(`Hora de Inicio : ${getFormatDate()} ${"Insertando información...".yellow}`);
+         if(res.recordsNumber > 0){
+                console.log(`Hora de Inicio : ${getFormatDate()} ${"Insertando información...".yellow}`);
 
-          for(const item of res.arrayFragments){
-         // Creamos la cadena para ejecutar el SP
-         // item para el fragmentado en ves de outputFile y el sp es sp_LoadJsonData2 para el out
-            const query = `EXEC sp_LoadJsonData
-                            @jsonFile = N'${item}' , 
-                            @insertStatement = N'${sqlInsert}'`;
-            const sqlResult = await executeQuery(query);
-          }
-        console.log(`Hora de Fin :    ${getFormatDate()} Registros insertados para ${tableName.green} correctamente!`);
+                for(const item of res.arrayFragments){
+                // Creamos la cadena para ejecutar el SP
+                // item para el fragmentado en ves de outputFile y el sp es sp_LoadJsonData2 para el out
+                    const query = `EXEC sp_LoadJsonData
+                                    @jsonFile = N'${item}' , 
+                                    @insertStatement = N'${sqlInsert}'`;
+                    const sqlResult = await executeQuery(query);
+                }
+                console.log(`Hora de Fin :    ${getFormatDate()} Registros insertados para ${tableName.green} correctamente!`);
+         }
+          
     
         }catch(error){
             throw new Error(`Problemas con la inserción de datos de el archivo ${fileName}: `+ error);
@@ -279,9 +289,27 @@ const insertDataJson = async (files = [], tableName, properties ) => {
   
   }
 
+  const setConfig = async () =>{
+        // TODO
+        // Definir un proceso para verificar la última fecha de consulta , y posteriormente
+        // descargar informacion desde esa fecha en específico
+        // En Guadalaraja son 6 horas menos en en UTC por que se las sumamos en el formato
+        const resp = await executeQuery(`SELECT 
+                [SNAPSHOT] snapshot,
+                FORMAT(SWITCHOFFSET(LAST_UPDATE,'+06:00'), 'yyyy-MM-ddTHH:mm:ssZ') last_update,
+                FORMAT(LAST_UPDATE, 'yyyy-MM-dd HH:mm:ss ') last_update_gdl
+        FROM TblConfigCanvasData2`);
+        _SNAPSHOT = resp.recordset[0].snapshot;
+        _LAST_UPDATE = resp.recordset[0].last_update;  
+        const last_update_gdl = resp.recordset[0].last_update_gdl
+        
+        console.log(`Última fecha de actualización ${last_update_gdl.green}`);
+  }
+
 export {
     getAccessToken,
     getJsonAxios,
     postJsonAxios,
-    loadTable
+    loadTable,
+    setConfig
 }

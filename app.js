@@ -1,17 +1,18 @@
 import colors from "colors";
-import { getAccessToken, getJsonAxios, loadTable } from "./helpers/axioshelper.js";
+import { getAccessToken, getJsonAxios, loadTable , setConfig} from "./helpers/axioshelper.js";
 import { saveErrorLog } from "./helpers/fileshelper.js";
 
 
 // listado de tablas que necesitamos importar
 let ListTables = [
-    // 'context_external_tools',
+    'users',
+    'context_external_tools',
     'courses',
-    // 'assignment_groups',
-    // 'assignments',
-    // 'submissions',
-    // 'scores',
-    // 'wikis'
+    'assignment_groups',
+    'assignments',
+    'submissions',
+    'scores',
+    'wikis'
 ]
 
 // Verifica si las tablas que pretendemos exportar existen en la base
@@ -24,9 +25,14 @@ const buscaTabla  = (tablas,tabla) =>{
 // funcion principal 
 const main = async () =>{
     console.time('Tiempo de ejecución'.cyan);
+
     try{
         // obtenemos el token para consumir el API
         const token = await getAccessToken();
+
+        // verifica la configuración desde la base de datos 
+
+        await setConfig();
         
         // Consultamos las tablas de la base e identificar cuales necesitamos
         let axiosConfig = {
@@ -47,13 +53,13 @@ const main = async () =>{
             try{
 
                 if (buscaTabla(tables.tables,ListTables[x])){
+                    console.log(`${"----------------------------------".cyan}`);
                     console.log(`Consultar Schema : ${ListTables[x].green} `);
                     // consultamos el schema de la tabla que si existe 
                     const schema = await getJsonAxios(`/dap/query/canvas/table/${ListTables[x]}/schema`,axiosConfig);
 
                     // Creamos la tabla e iniciamos con el proceso de inserción de datos 
-                    await loadTable(schema,ListTables[x]);
-                    
+                    await loadTable(schema,ListTables[x]); 
                 }
             }catch(error){
                 console.log(`Error con la tabla ${ListTables[x].green} `, error.name,":",error.message);

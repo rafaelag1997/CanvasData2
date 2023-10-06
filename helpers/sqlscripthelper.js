@@ -51,14 +51,14 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     });
 
 
-    const primaryKey = 'id INT , CONSTRAINT PK_'+ tableName +' PRIMARY KEY (id)'; 
+    const primaryKey = 'id BIGINT , CONSTRAINT PK_'+ tableName +' PRIMARY KEY (id)'; 
   
     const createTableSQL = `CREATE TABLE ${tableName} ( ${primaryKey}, ${columns.join(', ')}, ${metaColumns.join(', ')} );`;
   
     return createTableSQL;
   }
 
-  // crea el codigo INSERT de nuestra tabla
+  // crea el codigo INSERT dcd can  e nuestra tabla
 
   const generateInsertTableSQL = (tableName, properties ) => {
     // TODO
@@ -82,6 +82,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
       // Para que pueda almacenar al JSON se asigna el Alias JSON a la columna 
       // para saber más visita la página 
       // https://www.sqlshack.com/es/como-importar-exportar-datos-json-usando-sql-server-2016/
+      
 
       return `[${key}] ${columnType} ''$.${key}'' ${type === "object" ? 'AS JSON' : '' }`;
     });
@@ -89,6 +90,8 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     // las cadenas de texto que se envíen desde parámetro , deben de estar entre comilla doble
     // y hacer el reemplazo en el SP
 
+    // https://learn.microsoft.com/es-es/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16
+    
     let lcSelect = `SELECT ISNULL(j1.[id],NULL)  id, 
     ${arrayProperties.join(',')},
     ISNULL(j3.[ts], NULL) [ts] ,
@@ -101,7 +104,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     )
     CROSS APPLY OPENJSON([key])
     WITH (
-      [id] INT ''$.id''
+      [id] BIGINT ''$.id''
     ) j1
     CROSS APPLY OPENJSON([value])
     WITH (

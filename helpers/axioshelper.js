@@ -3,7 +3,7 @@ import axios from "axios";
 import { generateCreateTableSQL , generateInsertTableSQL } from "./sqlscripthelper.js";
 import { executeQuery } from "../server/conexion.js";
 import fs from 'fs';
-import { readFileJsonLineByLine,formatJsonFileLineByLine, unZipFile, createDirectory } from "./fileshelper.js";
+import { readFileJsonLineByLine, unZipFile, createDirectory } from "./fileshelper.js";
 
 // import cmd from 'node-command-line';
 
@@ -206,24 +206,23 @@ const loadTable = async (schema, table) => {
             }
         }
 
+        let currentDateObj = new Date();
+        let numberOfMlSeconds = currentDateObj.getTime();
+        let addMlSeconds = (60 * 60000) * 24; // el valor de 10 hrs antes de la petición
+        let newDateObj = new Date(numberOfMlSeconds - addMlSeconds);
 
         // Agregamos los valores al body
         let body = {
             format :"jsonl",
-            // since : getFormatDate(newDateObj)
+            since : getFormatDate(newDateObj)
             // since:"2023-01-01T00:00:00Z" // fecha de inicio de registros del servicio
         }
 
         // si no está activo descarga todo el histórico
 
-        if(!_SNAPSHOT) {
-            body.since = _LAST_UPDATE ;
-        }
-
-        // let currentDateObj = new Date();
-        // let numberOfMlSeconds = currentDateObj.getTime();
-        // let addMlSeconds = (60 * 60000) * 4; // el valor de 10 hrs antes de la petición
-        // let newDateObj = new Date(numberOfMlSeconds - addMlSeconds);
+        // if(!_SNAPSHOT ) {
+        //     if(_LAST_UPDATE) body.since = _LAST_UPDATE ;
+        // }
 
         // Esta función hace las peticiones necesarias cada 10 segundos , hasta que 
         // regrese el status de complete para la descarga de los documentos 
@@ -256,7 +255,6 @@ const insertDataJson = async (files = [], tableName, properties ) => {
     for(let x = 0;x < files.length ; x++){
         const fileName = files[x];
         try{
-        
           // esta versión debio cambiar porque los archivos fueron muy variables.
           // const jsonData = readFileJson(files[x]);
           const res = await readFileJsonLineByLine(fileName,bactchFragments);
@@ -285,8 +283,6 @@ const insertDataJson = async (files = [], tableName, properties ) => {
             throw new Error(`Problemas con la inserción de datos de el archivo ${fileName}: `+ error);
           }
       }
-    
-  
   }
 
   const setConfig = async () =>{
@@ -295,15 +291,14 @@ const insertDataJson = async (files = [], tableName, properties ) => {
         // descargar informacion desde esa fecha en específico
         // En Guadalaraja son 6 horas menos en en UTC por que se las sumamos en el formato
         const resp = await executeQuery(`SELECT 
-                [SNAPSHOT] snapshot,
+                ISNULL([SNAPSHOT],0) snapshot,
                 FORMAT(SWITCHOFFSET(LAST_UPDATE,'+06:00'), 'yyyy-MM-ddTHH:mm:ssZ') last_update,
                 FORMAT(LAST_UPDATE, 'yyyy-MM-dd HH:mm:ss ') last_update_gdl
         FROM TblConfigCanvasData2`);
         _SNAPSHOT = resp.recordset[0].snapshot;
         _LAST_UPDATE = resp.recordset[0].last_update;  
         const last_update_gdl = resp.recordset[0].last_update_gdl
-        
-        console.log(`Última fecha de actualización ${last_update_gdl.green}`);
+        if(last_update_gdl) console.log(`Última fecha de actualización ${last_update_gdl.green}`);
   }
 
 export {

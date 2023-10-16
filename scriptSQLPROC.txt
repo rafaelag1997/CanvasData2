@@ -1,7 +1,7 @@
 
--- cambia el nombre de la base por la tuya o deja la misma si deseas
+-- cambia el nombre de la base por la tuya.
 
-USE dbCanvasData;
+USE bdCanvasData;
 DROP PROC IF EXISTS sp_LoadJsonData;
 GO
 CREATE PROC sp_LoadJsonData(
@@ -27,3 +27,10 @@ BEGIN
 	
 END
 GO
+
+-- tabla de configuración , esta nos permitira cambiar la configuración de descarga de datos
+
+CREATE TABLE TblConfigCanvasData2 (
+		LAST_UPDATE datetime  ,
+		[SNAPSHOT] BIT 
+);

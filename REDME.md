@@ -6,7 +6,7 @@
 2.- Crear base de datos donde quieres almacenar la información y crear un usuario con los privilegios para escritura y lectura
 
 
-3.- Crear procedimiento almacenado sp_LoadJsonData, que está en el documento scriptSQLPROC.txt
+3.- Crear procedimiento almacenado sp_LoadJsonData y la tabla de configuración tblConfigCanvasData, que está en el documento scriptSQLPROC.txt
 
 
 4.- Cambiar la configuración de la conexion a la base en el archivo server/config.js

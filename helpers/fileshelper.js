@@ -178,7 +178,7 @@ const  formatJsonFileLineByLine = async (inputFile,outputFile) => {
 export{
     // readFileJson,
     readFileJsonLineByLine,
-    formatJsonFileLineByLine,
+    // formatJsonFileLineByLine,
     unZipFile,
     createDirectory,
     saveErrorLog

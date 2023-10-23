@@ -3,11 +3,12 @@ import  readline  from 'readline';
 import zlib  from 'zlib';
 import { promises as fsPromises } from 'fs';
 import colors from "colors";
+import { generateInsertStatmentSQL } from './sqlscripthelper.js';
 
 // leer archivo Json y retornar un objeto json de su valor 
 // La siguiente función, trabaja de manera adecuada con archivos que no contengan gran cantidad de registros
 // que superen la cantidad de caracteres permitidos por una cadena en sql server
-
+// depreciada 
 const readFileJson = (route) => {
 
     if( !fs.existsSync( route ) ) return [] ;
@@ -25,12 +26,55 @@ const readFileJson = (route) => {
     return JSON.parse(json);
 }
 
+// leer archivo JSON linea por linea y crear fragmentos Json para leerlos desde la base de datos
+
+// const readFileJsonLineByLine = async (filePath, batchSize) => {
+
+//   const outputFolder = `${filePath}_fragments`;
+//   createDirectory(outputFolder);
+
+//   const readStream = fs.createReadStream(filePath);
+//   const rl = readline.createInterface({
+//     input: readStream,
+//     output: process.stdout,
+//     terminal: false,
+//   });
+
+//   let recordsNumber = 0;
+//   let fragments = 1;
+//   let batch = [];
+//   let arrayFragments = [];
+
+//   for await (const line of rl) {
+
+//     // quitamos los separadores de linea y párrafo
+//     batch.push(JSON.parse(line.replace(/[\u2028\u2029]/g, ''))); 
+//     recordsNumber++;
+
+//     if (recordsNumber % batchSize === 0) {
+//       const outputFileName = `${fragments}.json`;
+//       const outputFilePath = `${filePath}_fragments/${outputFileName}`;
+//       fs.writeFileSync(outputFilePath, `${JSON.stringify(batch)}` );
+//       arrayFragments.push(outputFilePath);
+//       fragments++;
+//       batch = [];
+//     }
+//   }
+
+//   if (batch.length > 0) {
+//     const outputFileName = `${fragments}.json`;
+//     const outputFilePath = `${filePath}_fragments/${outputFileName}`;
+//     fs.writeFileSync(outputFilePath, `${JSON.stringify(batch)}` );
+//     arrayFragments.push(outputFilePath);
+
+//   }
+
+//   return { arrayFragments , recordsNumber  } // numero de fragmentos creados 
+// }
+
 // leer archivo JSON linea por linea
 
-const readFileJsonLineByLine = async (filePath, batchSize) => {
-
-  const outputFolder = `${filePath}_fragments`;
-  createDirectory(outputFolder);
+const readFileJsonLineByLine = async (filePath, batchSize, properties) => {
 
   const readStream = fs.createReadStream(filePath);
   const rl = readline.createInterface({
@@ -39,37 +83,79 @@ const readFileJsonLineByLine = async (filePath, batchSize) => {
     terminal: false,
   });
 
-  let recordsNumber = 0;
-  let fragments = 1;
+  let recordsNumber = 0; // numero de registros de todo el documento
   let batch = [];
   let arrayFragments = [];
 
   for await (const line of rl) {
 
     // quitamos los separadores de linea y párrafo
-    batch.push(JSON.parse(line.replace(/[\u2028\u2029]/g, ''))); 
+    // batch.push(JSON.parse(line.replace(/[\u2028\u2029]/g, ''))); 
     recordsNumber++;
-
+    // es el Json de un registro en archivo
+    let jsonRaw = JSON.parse(line.replace(/[\u2028\u2029]/g, ''));
+    // se le envia por parámetro, el json, mas las propiedades que debe de tener
+    let valuesStatment = generateInsertStatmentSQL(properties,jsonRaw);
+   
+    batch.push(valuesStatment);
     if (recordsNumber % batchSize === 0) {
-      const outputFileName = `${fragments}.json`;
-      const outputFilePath = `${filePath}_fragments/${outputFileName}`;
-      fs.writeFileSync(outputFilePath, `${JSON.stringify(batch)}` );
-      arrayFragments.push(outputFilePath);
-      fragments++;
-      batch = [];
+       arrayFragments.push(batch.join(', '));
+      //  const outputFilePath = `./downloads/${recordsNumber}.txt`;
+      //  fs.writeFileSync(outputFilePath, batch.join(', ') );
+       batch = [];
     }
   }
 
   if (batch.length > 0) {
-    const outputFileName = `${fragments}.json`;
-    const outputFilePath = `${filePath}_fragments/${outputFileName}`;
-    fs.writeFileSync(outputFilePath, `${JSON.stringify(batch)}` );
-    arrayFragments.push(outputFilePath);
-
+    arrayFragments.push(batch.join(', '));
+    // const outputFilePath = `./downloads/${recordsNumber}.txt`;
+    // fs.writeFileSync(outputFilePath, batch.join(', ') );
   }
 
   return { arrayFragments , recordsNumber  } // numero de fragmentos creados 
 }
+
+const readFileJsonLineByLineFragments = async (filePath, batchSize, properties) => {
+
+  const readStream = fs.createReadStream(filePath);
+  const rl = readline.createInterface({
+    input: readStream,
+    output: process.stdout,
+    terminal: false,
+  });
+
+  let recordsNumber = 0; // numero de registros de todo el documento
+  let batch = [];
+  let arrayFragments = [];
+
+  for await (const line of rl) {
+
+    // quitamos los separadores de linea y párrafo
+    // batch.push(JSON.parse(line.replace(/[\u2028\u2029]/g, ''))); 
+    recordsNumber++;
+    // es el Json de un registro en archivo
+    let jsonRaw = JSON.parse(line.replace(/[\u2028\u2029]/g, '').replace(/'/g, "''"));
+    // se le envia por parámetro, el json, mas las propiedades que debe de tener
+    // let valuesStatment = generateInsertStatmentSQL(properties,jsonRaw);
+   
+    batch.push(jsonRaw);
+    if (recordsNumber % batchSize === 0) {
+       arrayFragments.push(batch);
+      //  const outputFilePath = `./downloads/${recordsNumber}.txt`;
+      //  fs.writeFileSync(outputFilePath, batch.join(', ') );
+       batch = [];
+    }
+  }
+
+  if (batch.length > 0) {
+    arrayFragments.push(batch);
+    const outputFilePath = `./downloads/${recordsNumber}.txt`;
+    fs.writeFileSync(outputFilePath, JSON.stringify(batch) );
+  }
+
+  return { arrayFragments , recordsNumber  } // numero de fragmentos creados 
+}
+
 
 
 
@@ -90,6 +176,7 @@ const  unZipFile =  async (filePath) => {
       await fsPromises.writeFile(archivoDescomprimido, contenidoDescomprimido);
   
       return archivoDescomprimido;
+
     } catch (error) {
       console.error('Error al descomprimir el archivo:', error);
       throw error;
@@ -177,7 +264,8 @@ const  formatJsonFileLineByLine = async (inputFile,outputFile) => {
 
 export{
     // readFileJson,
-    readFileJsonLineByLine,
+    // readFileJsonLineByLine,
+    readFileJsonLineByLineFragments,
     // formatJsonFileLineByLine,
     unZipFile,
     createDirectory,

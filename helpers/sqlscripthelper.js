@@ -58,7 +58,7 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     return createTableSQL;
   }
 
-  // crea el codigo INSERT dcd can  e nuestra tabla
+  // crea el codigo INSERT de nuestra tabla
 
   const generateInsertTableSQL = (tableName, properties ) => {
     // TODO
@@ -82,7 +82,6 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
       // Para que pueda almacenar al JSON se asigna el Alias JSON a la columna 
       // para saber más visita la página 
       // https://www.sqlshack.com/es/como-importar-exportar-datos-json-usando-sql-server-2016/
-      
 
       return `[${key}] ${columnType} ''$.${key}'' ${type === "object" ? 'AS JSON' : '' }`;
     });
@@ -114,14 +113,55 @@ const generateCreateTableSQL = (jsonSchema,tableName) => {
     WITH (
       [ts] NVARCHAR(255) ''$.ts'',
       [action] NVARCHAR(255) ''$.action''
-    ) j3 `;
+    ) j3 ;`;
 
-     return [lcInsert,lcSelect].join(" ");  ;
+    return [lcInsert,lcSelect].join(" ");  
+
+    //  return lcInsert;
   }
+
+  // Esta funcion genera el Values de un grupo de registros 
+  const generateInsertStatmentSQL = (properties,jsonData) => {
+    
+    // es el orden en el que se leen para el acomodo en la tabla
+    let properOrder = ['key','value','meta'];
+    
+    let valores = [];
+
+    properOrder.map(key =>{
+        for(const column in properties[key].properties){
+          if(jsonData[key][column]){
+            let valor = jsonData[key][column];
+            switch(typeof(valor)){
+              case "number":
+                valor = valor;
+              break;
+              case "string":
+                valor = "'" + valor.replace(/'/g, "''") + "'"
+              break;
+              case "boolean":
+                valor = valor ? 1 : 0 ;
+              break;
+              case "object":
+                valor = JSON.stringify(valor).replace(/'/g, "''");
+              break;
+            }
+            valores.push(valor);
+          }else{
+            valores.push('NULL');
+          }
+        }
+    });
+
+    return `(${valores.join(', ')})`;
+
+  }
+
 
   export {
     generateCreateTableSQL,
-    generateInsertTableSQL
+    generateInsertTableSQL,
+    generateInsertStatmentSQL
   }
 
  

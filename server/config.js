@@ -1,17 +1,22 @@
-// Configuración de la conexión con autenticación de usuario local
+// Configuración de la conexión con autenticación de usuario 
+// importa las variables de entorno 
 
-const config = {
-  server: 'localhost',
-  user: 'canvasdata',
-  password: 'canvasdata',
-  database: 'dbCanvasData',
-  options: {
-    encrypt: true, // Habilita la encriptación y validación del certificado
-    trustServerCertificate: true,
-    connectTimeout: 30000, // Aumenta el tiempo de conexión a 30 segundos
-  },
-  requestTimeout: 1200000 // Aumentar el tiempo límite a 120 segundos
-};
+import { config as configServer} from "dotenv";
+configServer();
+
+
+// const config = {
+//   server: 'localhost',
+//   user: 'canvasdata',
+//   password: 'canvasdata',
+//   database: 'dbCanvasData',
+//   options: {
+//     encrypt: true, // Habilita la encriptación y validación del certificado
+//     trustServerCertificate: true,
+//     connectTimeout: 30000, // Aumenta el tiempo de conexión a 30 segundos
+//   },
+//   requestTimeout: 1200000 // Aumentar el tiempo límite a 120 segundos
+// };
 
 
 // const config = {
@@ -31,19 +36,18 @@ const config = {
 
 // Usuario de la Base de datos.
 
-// const config = {
-//   server: 'tstbdw04.uag.mx',
-//   port: 51500,
-//   user: 'usrCanvas', // Usuario con permisos 
-//   password: 'C4nv45T35t!',
-//   database: 'bdCanvasData',
-//   options: {
-//     encrypt: true, // Habilita la encriptación y validación del certificado
-//     trustServerCertificate: true, // Opcional, para conexiones seguras
-//     connectTimeout: 30000, // Aumenta el tiempo de conexión a 30 segundos
-//   },
-//   requestTimeout: 1200000 // Aumentar el tiempo límite a 120 segundos
-// };
-
+const config = {
+  server: process.env.SQLSERVER_HOST,
+  port: parseInt(process.env.SQLSERVER_PORT),
+  user: process.env.SQLSERVER_USER, // Usuario con permisos 
+  password: process.env.SQLSERVER_PASSWORD,
+  database: process.env.SQLSERVER_DB,
+  options: {
+    encrypt: true, // Habilita la encriptación y validación del certificado
+    trustServerCertificate: true, // Opcional, para conexiones seguras
+    connectTimeout: 30000, // Aumenta el tiempo de conexión a 30 segundos
+  },
+  requestTimeout: 1200000 // Aumentar el tiempo límite a 120 segundos
+};
 
 export {config} ;

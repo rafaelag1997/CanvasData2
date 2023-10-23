@@ -3,7 +3,9 @@ import axios from "axios";
 import { generateCreateTableSQL , generateInsertTableSQL } from "./sqlscripthelper.js";
 import { executeQuery } from "../server/conexion.js";
 import fs from 'fs';
-import { readFileJsonLineByLine, unZipFile, createDirectory } from "./fileshelper.js";
+import { readFileJsonLineByLineFragments, unZipFile, createDirectory } from "./fileshelper.js";
+import {config as configServer} from 'dotenv';
+configServer();
 
 // import cmd from 'node-command-line';
 
@@ -12,14 +14,15 @@ import { readFileJsonLineByLine, unZipFile, createDirectory } from "./fileshelpe
 const baseUrl = 'https://api-gateway.instructure.com';
 
 // Client ID y Client Secret 
-const clientId = 'us-east-1#af49ca6b-7ce8-4bb2-ac36-3a72d119518c';
-const clientSecret = 'KS6yta-jnOlt18yP1XLwRPtD0a-hSbFNzeJhffPIaTU';
+const clientId = process.env.CLIENT_ID;
+const clientSecret = process.env.CLIENT_SECRET;
 
 // Carpeta donde se guardan los archivos que se van a descargar GZ 
 
-const downloadFolder = 'C:/jsonData/';
+// const downloadFolder = 'C:/jsonData/';
+const downloadFolder = './downloads/';
 
-const bactchFragments = 30000 ;
+const bactchFragments = 100000 ;
 
 // variables de configuracion
 
@@ -214,15 +217,12 @@ const loadTable = async (schema, table) => {
         // Agregamos los valores al body
         let body = {
             format :"jsonl",
-            since : getFormatDate(newDateObj)
-            // since:"2023-01-01T00:00:00Z" // fecha de inicio de registros del servicio
         }
 
         // si no está activo descarga todo el histórico
-
-        // if(!_SNAPSHOT ) {
-        //     if(_LAST_UPDATE) body.since = _LAST_UPDATE ;
-        // }
+        if(!_SNAPSHOT ) {
+            if(_LAST_UPDATE) body.since = _LAST_UPDATE ;
+        }
 
         // Esta función hace las peticiones necesarias cada 10 segundos , hasta que 
         // regrese el status de complete para la descarga de los documentos 
@@ -242,6 +242,7 @@ const loadTable = async (schema, table) => {
         //  Una ves que los archivos se descomprimen ,  
         //  estos mismos se trabajan para que sean insertados en la base
         await insertDataJson(readFiles,table,schema.schema.properties );
+
     }catch (error) {
         throw new Error('Ocurrio un error inesperado: '+ error);
     } 
@@ -250,35 +251,45 @@ const loadTable = async (schema, table) => {
 const insertDataJson = async (files = [], tableName, properties ) => {
     
     // se genera el query dinámicamente 
+    // Solamente vamos a generar el insert con las columnas , despues de va a generar el values más adelante
+
     const sqlInsert = generateInsertTableSQL( tableName, properties );
 
     for(let x = 0;x < files.length ; x++){
         const fileName = files[x];
+
         try{
           // esta versión debio cambiar porque los archivos fueron muy variables.
           // const jsonData = readFileJson(files[x]);
-          const res = await readFileJsonLineByLine(fileName,bactchFragments);
+          const res = await readFileJsonLineByLineFragments(fileName,bactchFragments,properties);         
+        //   const res = await readFileJsonLineByLine(fileName,bactchFragments,properties);         
           console.log(res.recordsNumber > 0 ? 
              `${res.arrayFragments.length.toString().green} fragmento(s) creado(s) para ${res.recordsNumber.toString().green} registros `
            : `No se crearon fragmentos para este archivo`);
-       
-        //   const outputFile = `${downloadFolder}${tableName}.json`;
-        //   await formatJsonFileLineByLine(fileName,outputFile);
+          //   const outputFile = `${downloadFolder}${tableName}.json`;
+          //   await formatJsonFileLineByLine(fileName,outputFile);
+        console.log(res.arrayFragments[0].length);
          if(res.recordsNumber > 0){
                 console.log(`Hora de Inicio : ${getFormatDate()} ${"Insertando información...".yellow}`);
 
                 for(const item of res.arrayFragments){
                 // Creamos la cadena para ejecutar el SP
                 // item para el fragmentado en ves de outputFile y el sp es sp_LoadJsonData2 para el out
+                
                     const query = `EXEC sp_LoadJsonData
-                                    @jsonFile = N'${item}' , 
+                                    @jsonArray = N'${JSON.stringify(item)}' , 
                                     @insertStatement = N'${sqlInsert}'`;
                     const sqlResult = await executeQuery(query);
                 }
+
+                // for(const item of res.arrayFragments){
+                //         let query = sqlInsert + ' VALUES '+ item;
+                //         const sqlResult = await executeQuery(query);
+                // }
+
                 console.log(`Hora de Fin :    ${getFormatDate()} Registros insertados para ${tableName.green} correctamente!`);
          }
           
-    
         }catch(error){
             throw new Error(`Problemas con la inserción de datos de el archivo ${fileName}: `+ error);
           }

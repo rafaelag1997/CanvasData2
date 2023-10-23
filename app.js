@@ -1,18 +1,19 @@
 import colors from "colors";
 import { getAccessToken, getJsonAxios, loadTable , setConfig} from "./helpers/axioshelper.js";
-import { saveErrorLog } from "./helpers/fileshelper.js";
+import { createDirectory, saveErrorLog } from "./helpers/fileshelper.js";
 import { executeQuery } from "./server/conexion.js";
 
 
 // listado de tablas que necesitamos importar
 let ListTables = [
     'users',
-    'courses',
+    // 'roles',
+    // 'courses',
     'submissions',
-    'enrollments',   
-    'assignment_groups',
-    'assignments',
-    'scores',
+    // 'enrollments',   
+    // 'assignment_groups',
+    // 'assignments',
+    // 'scores',
 ]
 
 // Verifica si las tablas que pretendemos exportar existen en la base
@@ -24,9 +25,14 @@ const buscaTabla  = (tablas,tabla) =>{
 
 // funcion principal 
 const main = async () =>{
+    console.clear();
     console.time('Tiempo de ejecución'.cyan);
+    console.log('----------------------------------------'.green);
+    console.log('   Canvas Data 2 - descarga de datos '.cyan);
+    console.log('----------------------------------------'.green);
 
     let llError = false;
+    createDirectory("./downloads/")
 
     try{
         // obtenemos el token para consumir el API
@@ -74,7 +80,7 @@ const main = async () =>{
 
         // TODO:
         // Actualizar la ultima fecha de actualización 
-        if(!llError) await executeQuery(`UPDATE TblConfigCanvasData2 SET last_update = GETDATE()`);
+        // if(!llError) await executeQuery(`UPDATE TblConfigCanvasData2 SET last_update = GETDATE()`);
 
     }catch (error) {
         console.error('Ha ocurrido un error: '+ error.message);

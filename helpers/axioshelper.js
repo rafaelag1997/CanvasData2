@@ -3,7 +3,7 @@ import axios from "axios";
 import { generateCreateTableSQL , generateInsertTableSQL } from "./sqlscripthelper.js";
 import { executeQuery } from "../server/conexion.js";
 import fs from 'fs';
-import { readFileJsonLineByLineFragments, unZipFile, createDirectory } from "./fileshelper.js";
+import { readFileJsonLineByLineFragments, unZipFile, createDirectory,saveErrorLog } from "./fileshelper.js";
 import {config as configServer} from 'dotenv';
 configServer();
 
@@ -19,10 +19,9 @@ const clientSecret = process.env.CLIENT_SECRET;
 
 // Carpeta donde se guardan los archivos que se van a descargar GZ 
 
-// const downloadFolder = 'C:/jsonData/';
 const downloadFolder = './downloads/';
 
-const bactchFragments = 100000 ;
+const bachtFragments = 50000 ;
 
 // variables de configuracion
 
@@ -31,6 +30,8 @@ let _ACCESS_TOKEN = null ;
 let _SNAPSHOT = null;
 
 let _LAST_UPDATE = null ;
+
+let _TOKEN_ISSUED_AT = null;
 
 
 const getFormatDate = (date = new Date() ) => {
@@ -52,22 +53,29 @@ const getFormatDate = (date = new Date() ) => {
 // Función para consultar el estado de forma recurrente
 
 const consultState = async (endpoint, body, axiosConfig) => {
-    try {
       let status = null;
+      let intentos = 0;
       // seguimos consultando hasta que el status sea completo 
       // para inciar con la descarga de los documentos
-      while (status === null || status.status !== 'complete') {
-        status = await postJsonAxios(endpoint, body, axiosConfig);
-        console.log(`Status : ${status.status.green} , Hora de respuesta : ${getFormatDate()} `);
-        if (status.status !== 'complete') {
-          // Si el estado no está completo, espera 10 segundos antes de la siguiente consulta
-          await new Promise(resolve => setTimeout(resolve, 10000));
+      while (status === null || status.status !== 'complete' || intentos == 3 ) {
+        try{
+            status = await postJsonAxios(endpoint, body, axiosConfig);
+            console.log(`Status : ${status.status.green} , Hora de respuesta : ${getFormatDate()} `);
+            if (status.status !== 'complete') {
+            intentos = 0;
+            // Si el estado no está completo, espera 10 segundos antes de la siguiente consulta
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+        }catch(error){
+            intentos++;
+            console.log("Ha ocurrido un error: "+ error.message + " - Se volverá a intentar ".bgCyan);
+            saveErrorLog('Ha ocurrido un error: '+ error.message);
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            status = 'error';
         }
+        
       }
       return status; 
-    }catch (error) {
-      throw new Error('Error en la consulta de estado: ' + error);
-    }
   };
 
 // Función para obtener un token de acceso  
@@ -76,13 +84,12 @@ const getAccessToken = async () =>{
     try {
          
         let llValido =  false ;
-
+        
         if(_ACCESS_TOKEN != null ){
             const expiresIn = _ACCESS_TOKEN.expires_in; 
-            const tokenIssuedAt = new Date().getTime(); 
 
             // es el tiempo estimado de expiracion
-            const expirationTime = tokenIssuedAt + expiresIn * 1000; 
+            const expirationTime = _TOKEN_ISSUED_AT + expiresIn * 1000; 
             // Marca de tiempo actual
             const currentTime = new Date().getTime(); 
 
@@ -110,6 +117,8 @@ const getAccessToken = async () =>{
             console.log("Token Adquirido!".green);
 
             _ACCESS_TOKEN = response;
+            // Se vuelve a identificar la fecha en la que se obtiene el token 
+            _TOKEN_ISSUED_AT = new Date().getTime();
         }
 
          return _ACCESS_TOKEN.access_token
@@ -181,37 +190,26 @@ const downloadFiles =  async (files, tableName ) =>{
         
         }
     }
-
 return jsonFiles;
 
 }
 
 // Proceso para identificar la tabla que nos entan enviando por parámetro
 
-const loadTable = async (schema, table) => {
+const loadTable = async (schema, configTable ) => {
     try{
-        // creamos la Sentencia Create de la tabla que requerimos 
-        const llDrop = await executeQuery(`DROP TABLE IF EXISTS ${table}`);
-        const lcSql =  generateCreateTableSQL(schema.schema, table);
-        const llCreate = await executeQuery(lcSql);
-
-        // Una vez creada la tabla se tiene que empezar a consultar el proceso para extraer los 
-        // archivos que genera la API
-
         // obtenemos el token para consumir el API, puede que el tiempo de expiracion 
-
-        const token = await getAccessToken();
         
         // Consultamos las tablas de la base e identificar cuales necesitamos
         let axiosConfig = {
             headers: {
-                'x-instauth': token
+                'x-instauth': await getAccessToken()
             }
         }
 
         let currentDateObj = new Date();
         let numberOfMlSeconds = currentDateObj.getTime();
-        let addMlSeconds = (60 * 60000) * 24; // el valor de 10 hrs antes de la petición
+        let addMlSeconds = (60 * 60000) * 24; // el valor de 24 hrs antes de la petición
         let newDateObj = new Date(numberOfMlSeconds - addMlSeconds);
 
         // Agregamos los valores al body
@@ -220,14 +218,14 @@ const loadTable = async (schema, table) => {
         }
 
         // si no está activo descarga todo el histórico
-        if(!_SNAPSHOT ) {
-            if(_LAST_UPDATE) body.since = _LAST_UPDATE ;
-        }
+        // if(!_SNAPSHOT ) {
+        //     if(_LAST_UPDATE) body.since = _LAST_UPDATE ;
+        // }
 
         // Esta función hace las peticiones necesarias cada 10 segundos , hasta que 
         // regrese el status de complete para la descarga de los documentos 
 
-        const status = await consultState(`/dap/query/canvas/table/${table}/data`,body,axiosConfig);
+        const status = await consultState(`/dap/query/canvas/table/${configTable}/data`,body,axiosConfig);
         
         console.log(`El id de la consulta es  : ${status.objects[0].id.green}`);
 
@@ -237,11 +235,20 @@ const loadTable = async (schema, table) => {
         
         // se leen los archivos y regresamos el arreglo con los mismos
 
-        const readFiles = await downloadFiles(files, table);
-        
+        const readFiles = await downloadFiles(files, configTable );
+
+        // creamos la Sentencia Create de la tabla que requerimos 
+        const llDrop = await executeQuery(`DROP TABLE IF EXISTS ${configTable}`);
+        const lcSql =  generateCreateTableSQL(schema.schema, configTable);
+        const llCreate = await executeQuery(lcSql);
+
         //  Una ves que los archivos se descomprimen ,  
         //  estos mismos se trabajan para que sean insertados en la base
-        await insertDataJson(readFiles,table,schema.schema.properties );
+        await insertDataJson(readFiles,configTable,schema.schema.properties );
+
+        // Se actualiza la fecha de la ultima actualización
+
+        await executeQuery(`UPDATE TblConfigCanvasData2 SET last_update = GETDATE() WHERE [TABLE] = '${configTable}' `);
 
     }catch (error) {
         throw new Error('Ocurrio un error inesperado: '+ error);
@@ -254,62 +261,38 @@ const insertDataJson = async (files = [], tableName, properties ) => {
     // Solamente vamos a generar el insert con las columnas , despues de va a generar el values más adelante
 
     const sqlInsert = generateInsertTableSQL( tableName, properties );
-
     for(let x = 0;x < files.length ; x++){
         const fileName = files[x];
-
         try{
-          // esta versión debio cambiar porque los archivos fueron muy variables.
-          // const jsonData = readFileJson(files[x]);
-          const res = await readFileJsonLineByLineFragments(fileName,bactchFragments,properties);         
-        //   const res = await readFileJsonLineByLine(fileName,bactchFragments,properties);         
-          console.log(res.recordsNumber > 0 ? 
-             `${res.arrayFragments.length.toString().green} fragmento(s) creado(s) para ${res.recordsNumber.toString().green} registros `
-           : `No se crearon fragmentos para este archivo`);
-          //   const outputFile = `${downloadFolder}${tableName}.json`;
-          //   await formatJsonFileLineByLine(fileName,outputFile);
-        console.log(res.arrayFragments[0].length);
-         if(res.recordsNumber > 0){
-                console.log(`Hora de Inicio : ${getFormatDate()} ${"Insertando información...".yellow}`);
-
-                for(const item of res.arrayFragments){
-                // Creamos la cadena para ejecutar el SP
-                // item para el fragmentado en ves de outputFile y el sp es sp_LoadJsonData2 para el out
-                
-                    const query = `EXEC sp_LoadJsonData
-                                    @jsonArray = N'${JSON.stringify(item)}' , 
-                                    @insertStatement = N'${sqlInsert}'`;
-                    const sqlResult = await executeQuery(query);
-                }
-
-                // for(const item of res.arrayFragments){
-                //         let query = sqlInsert + ' VALUES '+ item;
-                //         const sqlResult = await executeQuery(query);
-                // }
-
-                console.log(`Hora de Fin :    ${getFormatDate()} Registros insertados para ${tableName.green} correctamente!`);
-         }
-          
+            console.log(`Hora de Inicio : ${getFormatDate()} ${"Insertando información...".yellow}`);
+            const res = await readFileJsonLineByLineFragments(fileName,bachtFragments,sqlInsert);         
+            console.log(`Hora de Fin :    ${getFormatDate()} ${res.toString().green} Registros insertados para ${tableName.green} correctamente!`);
         }catch(error){
             throw new Error(`Problemas con la inserción de datos de el archivo ${fileName}: `+ error);
           }
       }
   }
+  const insertToDatabase = async (batch,sqlInsert) => {
+    const query = `EXEC sp_LoadJsonData
+                    @jsonArray = N'${JSON.stringify(batch)}' , 
+                    @insertStatement = N'${sqlInsert}'`;
+    const sqlResult = await executeQuery(query); 
+    // await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+
 
   const setConfig = async () =>{
-        // TODO
-        // Definir un proceso para verificar la última fecha de consulta , y posteriormente
-        // descargar informacion desde esa fecha en específico
-        // En Guadalaraja son 6 horas menos en en UTC por que se las sumamos en el formato
+    
+        // En Guadalaraja son 6 horas menos quen en UTC por que se las sumamos en el formato
         const resp = await executeQuery(`SELECT 
+                TRIM([TABLE]) id, 
                 ISNULL([SNAPSHOT],0) snapshot,
                 FORMAT(SWITCHOFFSET(LAST_UPDATE,'+06:00'), 'yyyy-MM-ddTHH:mm:ssZ') last_update,
-                FORMAT(LAST_UPDATE, 'yyyy-MM-dd HH:mm:ss ') last_update_gdl
-        FROM TblConfigCanvasData2`);
-        _SNAPSHOT = resp.recordset[0].snapshot;
-        _LAST_UPDATE = resp.recordset[0].last_update;  
-        const last_update_gdl = resp.recordset[0].last_update_gdl
-        if(last_update_gdl) console.log(`Última fecha de actualización ${last_update_gdl.green}`);
+                FORMAT(LAST_UPDATE, 'yyyy-MM-dd HH:mm:ss ') last_update_local
+        FROM TblConfigCanvasData2 
+        WHERE ACTIVE = 1`);
+
+        return resp.recordset;
   }
 
 export {
@@ -317,5 +300,6 @@ export {
     getJsonAxios,
     postJsonAxios,
     loadTable,
-    setConfig
+    setConfig,
+    insertToDatabase
 }

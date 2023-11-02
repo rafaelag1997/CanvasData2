@@ -5,7 +5,7 @@ USE bdCanvasData;
 DROP PROC IF EXISTS sp_LoadJsonData;
 GO
 CREATE PROC sp_LoadJsonData(
-	@jsonFile NVARCHAR(MAX),
+	@jsonArray NVARCHAR(MAX),
 	@insertStatement NVARCHAR(MAX)
 )
 AS
@@ -14,9 +14,11 @@ BEGIN
 
     -- Genera la consulta dinámica
     SET @sql = N'
-        DECLARE @json NVARCHAR(MAX);
-        SELECT @json = BulkColumn
-        FROM OPENROWSET (BULK ' + QUOTENAME(@jsonFile, '''') + ', CODEPAGE = '+QUOTENAME('65001', '''') +' , SINGLE_CLOB) import;
+         DECLARE @json NVARCHAR(MAX) = @jsonArray;
+
+        -- Ejecutar la sentencia INSERT dinámica
+
+		 SET @json = @json COLLATE Latin1_General_CI_AI;
 
         -- Ejecutar la sentencia INSERT dinámica
 

@@ -52,14 +52,14 @@ const getFormatDate = (date = new Date() ) => {
 
 // Función para consultar el estado de forma recurrente
 
-const consultState = async (endpoint, body, axiosConfig) => {
+const consultState = async (endpoint, body) => {
       let status = null;
       let intentos = 0;
       // seguimos consultando hasta que el status sea completo 
       // para inciar con la descarga de los documentos
-      while (status === null || status.status !== 'complete' || intentos == 3 ) {
+      while ( status === null || (status.status !== 'complete' && intentos <= 3) ) {
         try{
-            status = await postJsonAxios(endpoint, body, axiosConfig);
+            status = await postJsonAxios(endpoint, body, await getAxiosConfig());
             console.log(`Status : ${status.status.green} , Hora de respuesta : ${getFormatDate()} `);
             if (status.status !== 'complete') {
             intentos = 0;
@@ -70,10 +70,11 @@ const consultState = async (endpoint, body, axiosConfig) => {
             intentos++;
             console.log("Ha ocurrido un error: "+ error.message + " - Se volverá a intentar ".bgCyan);
             saveErrorLog('Ha ocurrido un error: '+ error.message);
+            if (intentos > 3){
+                throw new Error(" No se pudo acceder a la información a la petición en Axios ")
+            }
             await new Promise(resolve => setTimeout(resolve, 10000));
-            status = 'error';
         }
-        
       }
       return status; 
   };
@@ -90,6 +91,7 @@ const getAccessToken = async () =>{
 
             // es el tiempo estimado de expiracion
             const expirationTime = _TOKEN_ISSUED_AT + expiresIn * 1000; 
+
             // Marca de tiempo actual
             const currentTime = new Date().getTime(); 
 
@@ -139,7 +141,7 @@ const getJsonAxios = async (endpoint,axiosConfig) =>{
 
 const postJsonAxios = async (endpoint,body,axiosConfig) =>{
     try{
-        const response = await axios.post(`${baseUrl}${endpoint}`,body, axiosConfig );
+        const response = await axios.post(`${baseUrl}${endpoint}`,body ,axiosConfig);
         return response.data;
     }catch (error) {
         throw new Error('No se pudo acceder a la data solicitada '+ error);
@@ -196,17 +198,17 @@ return jsonFiles;
 
 // Proceso para identificar la tabla que nos entan enviando por parámetro
 
+const getAxiosConfig = async () => {
+    return {
+        headers: {
+            'x-instauth': await getAccessToken()
+        }
+    }
+}
+
 const loadTable = async (schema, configTable ) => {
     try{
         // obtenemos el token para consumir el API, puede que el tiempo de expiracion 
-        
-        // Consultamos las tablas de la base e identificar cuales necesitamos
-        let axiosConfig = {
-            headers: {
-                'x-instauth': await getAccessToken()
-            }
-        }
-
         let currentDateObj = new Date();
         let numberOfMlSeconds = currentDateObj.getTime();
         let addMlSeconds = (60 * 60000) * 24; // el valor de 24 hrs antes de la petición
@@ -225,13 +227,13 @@ const loadTable = async (schema, configTable ) => {
         // Esta función hace las peticiones necesarias cada 10 segundos , hasta que 
         // regrese el status de complete para la descarga de los documentos 
 
-        const status = await consultState(`/dap/query/canvas/table/${configTable}/data`,body,axiosConfig);
+        const status = await consultState(`/dap/query/canvas/table/${configTable}/data`,body);
         
         console.log(`El id de la consulta es  : ${status.objects[0].id.green}`);
 
         // Consultamos las URL de los documentos generados
 
-        const files = await postJsonAxios(`/dap/object/url`,status.objects,axiosConfig);
+        const files = await postJsonAxios(`/dap/object/url`,status.objects, await getAxiosConfig());
         
         // se leen los archivos y regresamos el arreglo con los mismos
 
